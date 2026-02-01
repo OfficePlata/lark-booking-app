@@ -74,7 +74,7 @@ export function BookingCalendar({
     // If no check-in selected, or both are selected, start fresh with check-in
     if (!selectedCheckIn || (selectedCheckIn && selectedCheckOut)) {
       onSelectCheckIn(clickedDate)
-      onSelectCheckOut(clickedDate) // Reset checkout
+      // Do not set checkOut here. handleCheckInSelect in parent component sets checkOut to null.
       return
     }
 

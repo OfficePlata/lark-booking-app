@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useI18n } from '@/lib/i18n/context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -37,6 +37,22 @@ export function BookingForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [reservation, setReservation] = useState<ReservationResult | null>(null)
+  const [bookedDates, setBookedDates] = useState<string[]>([])
+
+  useEffect(() => {
+    async function fetchAvailability() {
+      try {
+        const response = await fetch('/api/availability')
+        if (response.ok) {
+          const data = await response.json()
+          setBookedDates(data.dates)
+        }
+      } catch (error) {
+        console.error('Failed to fetch availability:', error)
+      }
+    }
+    fetchAvailability()
+  }, [])
 
   const [formData, setFormData] = useState<BookingFormData>({
     checkInDate: null,
@@ -222,6 +238,7 @@ export function BookingForm() {
               selectedCheckOut={formData.checkOutDate}
               onSelectCheckIn={handleCheckInSelect}
               onSelectCheckOut={handleCheckOutSelect}
+              bookedDates={bookedDates}
             />
           </div>
 
