@@ -1,148 +1,95 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { generateIdempotencyKey } from '@/lib/square/client'
-import { createReservation } from '@/lib/lark/client'
+import { NextResponse } from 'next/server'
+import { SquareClient, SquareEnvironment } from 'square'
+import { v4 as uuidv4 } from 'uuid'
+import { createReservation } from '@/lib/lark'
 import { calculatePrice } from '@/lib/booking/pricing'
-import { validateBookingNights } from '@/lib/booking/restrictions'
+import { calculateNights } from '@/lib/booking/restrictions'
 
-interface SquarePaymentResponse {
-  payment?: {
-    id: string
-    status: string
-    amount_money: {
-      amount: number
-      currency: string
-    }
-  }
-  errors?: Array<{
-    code: string
-    detail: string
-  }>
-}
+const squareClient = new SquareClient({
+  token: process.env.SQUARE_ACCESS_TOKEN,
+  environment: process.env.NODE_ENV === 'production' ? SquareEnvironment.Production : SquareEnvironment.Sandbox,
+})
 
-export async function POST(request: NextRequest) {
+// Helper to handle BigInt serialization if needed
+// (though we aren't returning BigInts in JSON here, it's good practice to be aware)
+// BigInt.prototype.toJSON = function() { return this.toString() }
+
+export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const {
-      sourceId, // Payment token from Square Web Payments SDK
-      guestName,
-      email,
-      checkInDate,
-      checkOutDate,
-      numberOfGuests,
-    } = body
+    const { sourceId, guestName, email, checkInDate, checkOutDate, numberOfGuests } = body
 
-    // Validate required fields
+    // Validate inputs
     if (!sourceId || !guestName || !email || !checkInDate || !checkOutDate || !numberOfGuests) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      )
+       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Validate booking
-    const checkIn = new Date(checkInDate)
-    const checkOut = new Date(checkOutDate)
-    const validation = validateBookingNights(checkIn, checkOut)
+    // 1. Calculate and Verify Price
+    const start = new Date(checkInDate)
+    const end = new Date(checkOutDate)
+    const nights = calculateNights(start, end)
 
-    if (!validation.isValid) {
-      return NextResponse.json(
-        { error: validation.message },
-        { status: 400 }
-      )
+    if (nights <= 0) {
+      return NextResponse.json({ success: false, error: 'Invalid dates' }, { status: 400 })
     }
 
-    // Calculate pricing
-    const pricing = calculatePrice(validation.nights, numberOfGuests)
+    const pricing = calculatePrice(nights, numberOfGuests)
+    // Square expects amount in BigInt. For JPY, it's just the amount.
+    const amountMoney = BigInt(Math.round(pricing.totalAmount))
 
-    // Process payment with Square
-    const squareAccessToken = process.env.SQUARE_ACCESS_TOKEN
-    const squareLocationId = process.env.NEXT_PUBLIC_SQUARE_LOCATION_ID
-
-    if (!squareAccessToken || !squareLocationId) {
-      return NextResponse.json(
-        { error: 'Square payment is not configured' },
-        { status: 500 }
-      )
-    }
-
-    const idempotencyKey = generateIdempotencyKey()
-
-    // Square Payments API - Production endpoint
-    // For sandbox, use: https://connect.squareupsandbox.com/v2/payments
-    const squareApiUrl = process.env.SQUARE_ENVIRONMENT === 'sandbox'
-      ? 'https://connect.squareupsandbox.com/v2/payments'
-      : 'https://connect.squareup.com/v2/payments'
-
-    const paymentResponse = await fetch(squareApiUrl, {
-      method: 'POST',
-      headers: {
-        'Square-Version': '2024-01-18',
-        'Authorization': `Bearer ${squareAccessToken}`,
-        'Content-Type': 'application/json',
+    // 2. Create Payment with Square
+    const paymentResponse = await squareClient.paymentsApi.createPayment({
+      sourceId,
+      idempotencyKey: uuidv4(),
+      amountMoney: {
+        amount: amountMoney,
+        currency: 'JPY',
       },
-      body: JSON.stringify({
-        source_id: sourceId,
-        idempotency_key: idempotencyKey,
-        amount_money: {
-          amount: pricing.totalAmount, // Square expects amount in smallest currency unit (JPY is already whole numbers)
-          currency: 'JPY',
-        },
-        location_id: squareLocationId,
-        reference_id: `booking-${Date.now()}`,
-        note: `Accommodation booking for ${guestName}`,
-        buyer_email_address: email,
-      }),
+      autocomplete: true, // Complete the payment immediately
+      note: `Reservation for ${guestName} (${checkInDate} - ${checkOutDate})`,
     })
 
-    const paymentData: SquarePaymentResponse = await paymentResponse.json()
+    const payment = paymentResponse.result.payment
 
-    if (paymentData.errors && paymentData.errors.length > 0) {
-      console.error('Square payment error:', paymentData.errors)
-      return NextResponse.json(
-        { 
-          error: 'Payment failed',
-          details: paymentData.errors[0]?.detail || 'Unknown payment error',
-        },
-        { status: 400 }
-      )
+    if (!payment || payment.status !== 'COMPLETED') {
+       return NextResponse.json({ success: false, error: 'Payment failed' }, { status: 400 })
     }
 
-    if (!paymentData.payment || paymentData.payment.status !== 'COMPLETED') {
-      return NextResponse.json(
-        { error: 'Payment was not completed' },
-        { status: 400 }
-      )
-    }
+    // 3. Create Reservation in Lark
+    const reservationId = `RES-${Date.now()}`
 
-    // Payment successful - create reservation in Lark
-    const reservation = await createReservation({
+    const success = await createReservation({
+      reservationId,
       guestName,
       email,
       checkInDate,
       checkOutDate,
-      numberOfNights: validation.nights,
+      numberOfNights: nights,
       numberOfGuests,
       totalAmount: pricing.totalAmount,
       paymentStatus: 'Paid',
-      squareTransactionId: paymentData.payment.id,
+      squareTransactionId: payment.id || '',
       status: 'Confirmed',
     })
 
+    if (!success) {
+      console.error('Failed to create reservation in Lark for payment:', payment.id)
+      return NextResponse.json({ success: false, error: 'Payment successful but reservation failed. Please contact support.' }, { status: 500 })
+    }
+
     return NextResponse.json({
       success: true,
-      reservation,
-      pricing,
-      payment: {
-        transactionId: paymentData.payment.id,
-        amount: paymentData.payment.amount_money.amount,
-        currency: paymentData.payment.amount_money.currency,
-      },
+      payment: { transactionId: payment.id }
     })
-  } catch (error) {
+
+  } catch (error: any) {
     console.error('Payment processing error:', error)
-    return NextResponse.json(
-      { error: 'Payment processing failed' },
-      { status: 500 }
-    )
+    // Handle specific Square errors if possible
+    if (error.result && error.result.errors) {
+        // We take the first error message
+        const detail = error.result.errors[0].detail
+        return NextResponse.json({ success: false, error: detail }, { status: 400 })
+    }
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 })
   }
 }
