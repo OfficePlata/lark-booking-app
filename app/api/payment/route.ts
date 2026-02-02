@@ -1,18 +1,20 @@
 import { NextResponse } from 'next/server'
-import { SquareClient, SquareEnvironment } from 'square'
 import { v4 as uuidv4 } from 'uuid'
 import { createReservation } from '@/lib/lark'
 import { calculatePrice } from '@/lib/booking/pricing'
 import { calculateNights } from '@/lib/booking/restrictions'
 
-const squareClient = new SquareClient({
-  token: process.env.SQUARE_ACCESS_TOKEN,
-  environment: process.env.NODE_ENV === 'production' ? SquareEnvironment.Production : SquareEnvironment.Sandbox,
-})
+export const runtime = 'edge';
 
-// Helper to handle BigInt serialization if needed
-// (though we aren't returning BigInts in JSON here, it's good practice to be aware)
-// BigInt.prototype.toJSON = function() { return this.toString() }
+const SQUARE_ACCESS_TOKEN = process.env.SQUARE_ACCESS_TOKEN
+// Use sandbox URL by default unless prod environment variable is set explicitly to 'production'
+// or if we detect we are in a prod build, but Square usually has separate tokens.
+// A common pattern is to let the token decide or env var.
+// Square Sandbox tokens start with EAAAE...
+const isSandbox = process.env.NODE_ENV !== 'production'
+const SQUARE_API_URL = isSandbox
+  ? 'https://connect.squareupsandbox.com/v2/payments'
+  : 'https://connect.squareup.com/v2/payments'
 
 export async function POST(request: Request) {
   try {
@@ -34,25 +36,46 @@ export async function POST(request: Request) {
     }
 
     const pricing = calculatePrice(nights, numberOfGuests)
-    // Square expects amount in BigInt. For JPY, it's just the amount.
-    const amountMoney = BigInt(Math.round(pricing.totalAmount))
+    // Square expects integer for amount. JPY has no decimals.
+    const amount = Math.round(pricing.totalAmount)
 
-    // 2. Create Payment with Square
-    const paymentResponse = await squareClient.paymentsApi.createPayment({
-      sourceId,
-      idempotencyKey: uuidv4(),
-      amountMoney: {
-        amount: amountMoney,
-        currency: 'JPY',
-      },
-      autocomplete: true, // Complete the payment immediately
-      note: `Reservation for ${guestName} (${checkInDate} - ${checkOutDate})`,
+    // 2. Create Payment with Square via Fetch
+    if (!SQUARE_ACCESS_TOKEN) {
+        console.error('Square access token is missing')
+        return NextResponse.json({ success: false, error: 'Server configuration error' }, { status: 500 })
+    }
+
+    const paymentRes = await fetch(SQUARE_API_URL, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${SQUARE_ACCESS_TOKEN}`,
+            'Content-Type': 'application/json',
+            'Square-Version': '2024-05-15', // Use a recent version
+        },
+        body: JSON.stringify({
+            source_id: sourceId,
+            idempotency_key: uuidv4(),
+            amount_money: {
+                amount: amount,
+                currency: 'JPY',
+            },
+            autocomplete: true,
+            note: `Reservation for ${guestName} (${checkInDate} - ${checkOutDate})`,
+        })
     })
 
-    const payment = paymentResponse.result.payment
+    const paymentData = await paymentRes.json()
+
+    if (!paymentRes.ok) {
+        console.error('Square Payment Error:', paymentData)
+        const detail = paymentData.errors ? paymentData.errors[0].detail : 'Payment failed'
+        return NextResponse.json({ success: false, error: detail }, { status: 400 })
+    }
+
+    const payment = paymentData.payment
 
     if (!payment || payment.status !== 'COMPLETED') {
-       return NextResponse.json({ success: false, error: 'Payment failed' }, { status: 400 })
+       return NextResponse.json({ success: false, error: 'Payment failed or not completed' }, { status: 400 })
     }
 
     // 3. Create Reservation in Lark
@@ -84,12 +107,6 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error('Payment processing error:', error)
-    // Handle specific Square errors if possible
-    if (error.result && error.result.errors) {
-        // We take the first error message
-        const detail = error.result.errors[0].detail
-        return NextResponse.json({ success: false, error: detail }, { status: 400 })
-    }
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 })
   }
 }

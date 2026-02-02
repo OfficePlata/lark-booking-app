@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createReservation, getReservations, getBookedDates } from '@/lib/lark/client'
+import { createReservation, getReservations, getBookedDatesInRange } from '@/lib/lark'
 import { calculatePrice } from '@/lib/booking/pricing'
 import { validateBookingNights } from '@/lib/booking/restrictions'
+
+export const runtime = 'edge';
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,7 +21,7 @@ export async function GET(request: NextRequest) {
         )
       }
       
-      const bookedDates = await getBookedDates(startDate, endDate)
+      const bookedDates = await getBookedDatesInRange(startDate, endDate)
       return NextResponse.json({ bookedDates })
     }
     
