@@ -47,7 +47,10 @@ export async function POST(request: NextRequest) {
       checkOutDate,
       numberOfGuests,
       paymentStatus = 'Pending',
-      squareTransactionId,
+      // Changed: Receive generic payment info instead of Square ID
+      paymentTransactionId,
+      paymentUrl,
+      paymentMethod = 'AirPAY', // Default to AirPAY as requested
     } = body
 
     // Validate required fields
@@ -83,8 +86,12 @@ export async function POST(request: NextRequest) {
       numberOfGuests,
       totalAmount: pricing.totalAmount,
       paymentStatus,
-      squareTransactionId,
-      status: paymentStatus === 'Paid' ? 'Confirmed' : 'Confirmed',
+      // Map new fields
+      paymentTransactionId,
+      paymentUrl,
+      paymentMethod,
+      // If payment is pending (AirPAY link to be sent), we still confirm the booking slot
+      status: 'Confirmed', 
     })
 
     return NextResponse.json({ 
