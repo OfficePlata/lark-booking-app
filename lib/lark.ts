@@ -3,8 +3,8 @@
 // - LARK_APP_ID
 // - LARK_APP_SECRET
 // - LARK_BASE_ID
-// - LARK_ROOMS_TABLE_ID
 // - LARK_RESERVATIONS_TABLE_ID
+// (LARK_ROOMS_TABLE_ID is no longer required for single-property setup)
 
 interface LarkTokenResponse {
   code: number
@@ -97,35 +97,22 @@ export interface Reservation {
   status: 'Confirmed' | 'Cancelled'
 }
 
+// SIMPLIFIED: Returns static room data instead of fetching from Lark.
+// Only the Reservations table is needed in Lark now.
 export async function getRooms(): Promise<Room[]> {
-  const token = await getTenantAccessToken()
-  const baseId = process.env.LARK_BASE_ID
-  const tableId = process.env.LARK_ROOMS_TABLE_ID
-
-  const response = await fetch(
-    `https://open.larksuite.com/open-apis/bitable/v1/apps/${baseId}/tables/${tableId}/records`,
+  // You can edit your property details directly here
+  return [
     {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      id: 'default-room',
+      name: 'Luxury Ocean Villa', // Set your property name
+      capacity: 6,                // Max guests
+      basePrice: 25000,           // Price per night (JPY)
+      images: [
+        '/placeholder.jpg',       // Ensure these images exist in your public folder
+        '/placeholder-user.jpg'   // or use external URLs
+      ]
     }
-  )
-
-  const data: LarkListResponse = await response.json()
-
-  if (data.code !== 0) {
-    throw new Error(`Failed to fetch rooms: ${data.msg}`)
-  }
-
-  return data.data.items.map((item) => ({
-    id: item.record_id,
-    name: item.fields['Room Name'] as string,
-    capacity: item.fields['Capacity'] as number,
-    basePrice: item.fields['Base Price'] as number,
-    images: Array.isArray(item.fields['Images'])
-      ? (item.fields['Images'] as Array<{ url?: string; text?: string }>).map((img) => img.url || img.text || '')
-      : [],
-  }))
+  ]
 }
 
 export async function getReservations(filters?: {
