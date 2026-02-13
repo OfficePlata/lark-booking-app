@@ -1,484 +1,257 @@
 'use client'
 
-import { useState, useMemo, useCallback, useEffect } from 'react'
-import { useI18n } from '@/lib/i18n/context'
+import { useState } from 'react'
+import { format } from 'date-fns'
+import { ja } from 'date-fns/locale'
+import { Calendar as CalendarIcon, Loader2, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Calendar } from '@/components/ui/calendar'
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { BookingCalendar } from './booking-calendar'
-import { PricingDisplay } from './pricing-display'
-import { SquarePaymentForm } from './square-payment-form'
-import { calculateNights, checkBookingRestriction, validateBookingNights } from '@/lib/booking/restrictions'
-import { calculatePrice, formatCurrency } from '@/lib/booking/pricing'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
-import { Users, Calendar, AlertCircle, CheckCircle } from 'lucide-react'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useForm } from 'react-hook-form'
+import * as z from 'zod'
+import { PricingDisplay } from './pricing-display'
+import { BookingCalendar } from './booking-calendar'
 
-type BookingStep = 'select-dates' | 'guest-info' | 'payment' | 'confirmation'
-
-interface BookingFormData {
-  checkInDate: Date | null
-  checkOutDate: Date | null
-  numberOfGuests: number
-  guestName: string
-  email: string
-  phone: string
-  notes: string
-}
-
-interface ReservationResult {
-  reservationId: string
-  transactionId?: string
-}
+const formSchema = z.object({
+  guestName: z.string().min(2, {
+    message: 'お名前は2文字以上で入力してください',
+  }),
+  email: z.string().email({
+    message: '有効なメールアドレスを入力してください',
+  }),
+  numberOfGuests: z.string().refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
+    message: '人数を選択してください',
+  }),
+})
 
 export function BookingForm() {
-  const { locale, t } = useI18n()
-  const [step, setStep] = useState<BookingStep>('select-dates')
+  const { toast } = useToast()
+  const [date, setDate] = useState<Date | undefined>(new Date())
+  const [checkIn, setCheckIn] = useState<Date | null>(null)
+  const [checkOut, setCheckOut] = useState<Date | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [reservation, setReservation] = useState<ReservationResult | null>(null)
-  const [bookedDates, setBookedDates] = useState<string[]>([])
+  const [isSuccess, setIsSuccess] = useState(false)
 
-  useEffect(() => {
-    async function fetchAvailability() {
-      try {
-        const response = await fetch('/api/availability')
-        if (response.ok) {
-          const data = await response.json()
-          setBookedDates(data.dates)
-        }
-      } catch (error) {
-        console.error('Failed to fetch availability:', error)
-      }
-    }
-    fetchAvailability()
-  }, [])
-
-  const [formData, setFormData] = useState<BookingFormData>({
-    checkInDate: null,
-    checkOutDate: null,
-    numberOfGuests: 2,
-    guestName: '',
-    email: '',
-    phone: '',
-    notes: '',
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      guestName: '',
+      email: '',
+      numberOfGuests: '2',
+    },
   })
 
-  const numberOfNights = useMemo(() => {
-    if (formData.checkInDate && formData.checkOutDate) {
-      return calculateNights(formData.checkInDate, formData.checkOutDate)
-    }
-    return 0
-  }, [formData.checkInDate, formData.checkOutDate])
+  // Calculate nights
+  const nights = checkIn && checkOut
+    ? Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24))
+    : 0
 
-  const pricing = useMemo(() => {
-    if (numberOfNights > 0) {
-      return calculatePrice(numberOfNights, formData.numberOfGuests)
-    }
-    return null
-  }, [numberOfNights, formData.numberOfGuests])
-
-  const restriction = useMemo(() => {
-    if (formData.checkInDate) {
-      return checkBookingRestriction(formData.checkInDate)
-    }
-    return null
-  }, [formData.checkInDate])
-
-  const validation = useMemo(() => {
-    if (formData.checkInDate && formData.checkOutDate) {
-      return validateBookingNights(formData.checkInDate, formData.checkOutDate)
-    }
-    return null
-  }, [formData.checkInDate, formData.checkOutDate])
-
-  const canProceedToGuestInfo = useMemo(() => {
-    return validation?.isValid === true && numberOfNights > 0
-  }, [validation, numberOfNights])
-
-  const canProceedToPayment = useMemo(() => {
-    return (
-      canProceedToGuestInfo &&
-      formData.guestName.trim() !== '' &&
-      formData.email.trim() !== '' &&
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)
-    )
-  }, [canProceedToGuestInfo, formData.guestName, formData.email])
-
-  const handleCheckInSelect = useCallback((date: Date) => {
-    setFormData(prev => ({ ...prev, checkInDate: date, checkOutDate: null }))
-    setError(null)
-  }, [])
-
-  const handleCheckOutSelect = useCallback((date: Date) => {
-    setFormData(prev => ({ ...prev, checkOutDate: date }))
-    setError(null)
-  }, [])
-
-  const handleGuestCountChange = useCallback((count: number) => {
-    setFormData(prev => ({ ...prev, numberOfGuests: Math.max(1, Math.min(6, count)) }))
-  }, [])
-
-  const handleInputChange = useCallback((field: keyof BookingFormData, value: string | number) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
-    setError(null)
-  }, [])
-
-  const handlePaymentSuccess = useCallback(async (transactionId: string) => {
-    setReservation({
-      reservationId: `RES-${Date.now()}`,
-      transactionId,
-    })
-    setStep('confirmation')
-  }, [])
-
-  const handlePaymentError = useCallback((errorMessage: string) => {
-    setError(errorMessage)
-  }, [])
-
-  const formatDateDisplay = (date: Date | null) => {
-    if (!date) return '-'
-    return date.toLocaleDateString(locale === 'ja' ? 'ja-JP' : 'en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    })
+  const handleCheckInSelect = (date: Date) => {
+    setCheckIn(date)
+    setCheckOut(null) // Reset checkout when checkin changes
   }
 
-  // Render Steps
-  if (step === 'confirmation' && reservation) {
+  const handleCheckOutSelect = (date: Date) => {
+    setCheckOut(date)
+  }
+
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!checkIn || !checkOut) {
+      toast({
+        title: "日程を選択してください",
+        description: "チェックイン日とチェックアウト日を指定してください。",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      const response = await fetch('/api/reservations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          guestName: values.guestName,
+          email: values.email,
+          numberOfGuests: parseInt(values.numberOfGuests),
+          checkInDate: format(checkIn, 'yyyy-MM-dd'),
+          checkOutDate: format(checkOut, 'yyyy-MM-dd'),
+          paymentStatus: 'Pending',
+          paymentMethod: 'AirPAY', // Indicate AirPAY usage
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || '予約の作成に失敗しました')
+      }
+
+      setIsSuccess(true)
+      toast({
+        title: "予約リクエストを受け付けました",
+        description: "確認メールをお送りします。決済用リンクよりお支払いをお願いいたします。",
+      })
+    } catch (error) {
+      console.error(error)
+      toast({
+        title: "エラーが発生しました",
+        description: error instanceof Error ? error.message : "予約処理中に問題が発生しました",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  if (isSuccess) {
     return (
-      <div className="max-w-2xl mx-auto">
-        <div className="bg-card rounded-xl border border-border p-8 text-center">
-          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle className="w-8 h-8 text-primary" />
-          </div>
-          <h2 className="text-2xl font-semibold text-foreground mb-2">{t.confirmation.title}</h2>
-          <p className="text-muted-foreground mb-6">{t.confirmation.thankYou}</p>
-          
-          <div className="bg-muted/50 rounded-lg p-4 mb-6">
-            <p className="text-sm text-muted-foreground">{t.confirmation.reservationId}</p>
-            <p className="text-xl font-mono font-semibold text-foreground">{reservation.reservationId}</p>
-          </div>
-
-          <div className="text-left space-y-4 border-t border-border pt-6">
-            <h3 className="font-medium text-foreground">{t.confirmation.details}</h3>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-muted-foreground">{t.booking.checkIn}</p>
-                <p className="font-medium text-foreground">{formatDateDisplay(formData.checkInDate)}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">{t.booking.checkOut}</p>
-                <p className="font-medium text-foreground">{formatDateDisplay(formData.checkOutDate)}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">{t.booking.guests}</p>
-                <p className="font-medium text-foreground">{formData.numberOfGuests}{t.booking.guestUnit}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">{t.booking.totalAmount}</p>
-                <p className="font-medium text-primary">{pricing ? formatCurrency(pricing.totalAmount, locale) : '-'}</p>
-              </div>
-            </div>
-          </div>
-
-          <p className="text-sm text-muted-foreground mt-6">{t.confirmation.emailSent}</p>
-        </div>
+      <div className="text-center p-8 bg-card rounded-lg border shadow-sm">
+        <h3 className="text-2xl font-bold text-green-600 mb-4">予約リクエスト完了</h3>
+        <p className="text-muted-foreground mb-6">
+          ご予約ありがとうございます。<br />
+          ご入力いただいたメールアドレス宛に、確認メールと決済用リンク（AirPAY）をお送りいたします。<br />
+          お支払いの完了をもって予約確定となります。
+        </p>
+        <Button onClick={() => window.location.reload()}>
+          新しい予約を作成する
+        </Button>
       </div>
     )
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* Progress Steps */}
-      <div className="flex items-center justify-center mb-8 gap-2">
-        {(['select-dates', 'guest-info', 'payment'] as const).map((s, index) => (
-          <div key={s} className="flex items-center">
-            <div
-              className={cn(
-                'w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors',
-                step === s
-                  ? 'bg-primary text-primary-foreground'
-                  : index < ['select-dates', 'guest-info', 'payment'].indexOf(step)
-                  ? 'bg-primary/20 text-primary'
-                  : 'bg-muted text-muted-foreground'
-              )}
-            >
-              {index + 1}
-            </div>
-            {index < 2 && (
-              <div
-                className={cn(
-                  'w-12 h-0.5 mx-2',
-                  index < ['select-dates', 'guest-info', 'payment'].indexOf(step)
-                    ? 'bg-primary/40'
-                    : 'bg-muted'
-                )}
-              />
-            )}
-          </div>
-        ))}
+    <div className="grid gap-8 lg:grid-cols-2">
+      <div>
+        <h3 className="text-lg font-medium mb-4">1. 日程の選択</h3>
+        <BookingCalendar
+          selectedCheckIn={checkIn}
+          selectedCheckOut={checkOut}
+          onSelectCheckIn={handleCheckInSelect}
+          onSelectCheckOut={handleCheckOutSelect}
+          className="mb-6"
+        />
+        
+        {checkIn && checkOut && (
+          <PricingDisplay 
+            nights={nights} 
+            guests={parseInt(form.watch('numberOfGuests'))} 
+          />
+        )}
       </div>
 
-      {/* Error Display */}
-      {error && (
-        <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
-          <p className="text-sm text-destructive">{error}</p>
+      <div>
+        <h3 className="text-lg font-medium mb-4">2. お客様情報</h3>
+        <div className="bg-card rounded-lg border p-6">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="guestName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>お名前</FormLabel>
+                    <FormControl>
+                      <Input placeholder="山田 太郎" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>メールアドレス</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="taro@example.com" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      予約確認メールと決済リンクをお送りします
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="numberOfGuests"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>宿泊人数</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="人数を選択" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {[1, 2, 3, 4, 5, 6].map((num) => (
+                          <SelectItem key={num} value={num.toString()}>
+                            {num}名
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="pt-4">
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  size="lg"
+                  disabled={!checkIn || !checkOut || isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      処理中...
+                    </>
+                  ) : (
+                    '予約リクエストを送信する'
+                  )}
+                </Button>
+                <p className="text-xs text-muted-foreground text-center mt-4">
+                  ※「予約リクエストを送信する」を押すと、仮予約となります。<br/>
+                  後ほど送付されるメールよりAirPAYにてお支払いをお願いいたします。
+                </p>
+              </div>
+            </form>
+          </Form>
         </div>
-      )}
-
-      {/* Step 1: Select Dates */}
-      {step === 'select-dates' && (
-        <div className="grid lg:grid-cols-2 gap-6">
-          <div>
-            <BookingCalendar
-              selectedCheckIn={formData.checkInDate}
-              selectedCheckOut={formData.checkOutDate}
-              onSelectCheckIn={handleCheckInSelect}
-              onSelectCheckOut={handleCheckOutSelect}
-              bookedDates={bookedDates}
-            />
-          </div>
-
-          <div className="space-y-6">
-            {/* Date Selection Summary */}
-            <div className="bg-card rounded-lg border border-border p-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground text-xs uppercase tracking-wider">{t.booking.checkIn}</Label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Calendar className="w-4 h-4 text-muted-foreground" />
-                    <span className="font-medium text-foreground">{formatDateDisplay(formData.checkInDate)}</span>
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground text-xs uppercase tracking-wider">{t.booking.checkOut}</Label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Calendar className="w-4 h-4 text-muted-foreground" />
-                    <span className="font-medium text-foreground">{formatDateDisplay(formData.checkOutDate)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {numberOfNights > 0 && (
-                <div className="mt-4 pt-4 border-t border-border">
-                  <p className="text-sm text-muted-foreground">
-                    {numberOfNights}{t.booking.nightsStay}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Guest Count */}
-            <div className="bg-card rounded-lg border border-border p-4">
-              <Label className="text-muted-foreground text-xs uppercase tracking-wider">{t.booking.guests}</Label>
-              <div className="flex items-center gap-4 mt-2">
-                <Users className="w-4 h-4 text-muted-foreground" />
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8 bg-transparent"
-                    onClick={() => handleGuestCountChange(formData.numberOfGuests - 1)}
-                    disabled={formData.numberOfGuests <= 1}
-                  >
-                    -
-                  </Button>
-                  <span className="w-8 text-center font-medium text-foreground">{formData.numberOfGuests}</span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8 bg-transparent"
-                    onClick={() => handleGuestCountChange(formData.numberOfGuests + 1)}
-                    disabled={formData.numberOfGuests >= 6}
-                  >
-                    +
-                  </Button>
-                  <span className="text-muted-foreground ml-2">{t.booking.guestUnit}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Restriction Warning */}
-            {restriction?.isRestricted && validation && !validation.isValid && (
-              <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                <p className="text-sm text-amber-800 dark:text-amber-200">{t.restrictions.shortStayRestricted}</p>
-              </div>
-            )}
-
-            {/* Pricing */}
-            <PricingDisplay numberOfNights={numberOfNights} numberOfGuests={formData.numberOfGuests} />
-
-            {/* Continue Button */}
-            <Button
-              className="w-full"
-              size="lg"
-              onClick={() => setStep('guest-info')}
-              disabled={!canProceedToGuestInfo}
-            >
-              {t.common.next}
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Step 2: Guest Information */}
-      {step === 'guest-info' && (
-        <div className="grid lg:grid-cols-2 gap-6">
-          <div className="space-y-4">
-            <div className="bg-card rounded-lg border border-border p-4">
-              <h3 className="font-medium text-foreground mb-4">{t.booking.confirmation}</h3>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t.booking.checkIn}</span>
-                  <span className="text-foreground">{formatDateDisplay(formData.checkInDate)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t.booking.checkOut}</span>
-                  <span className="text-foreground">{formatDateDisplay(formData.checkOutDate)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t.booking.guests}</span>
-                  <span className="text-foreground">{formData.numberOfGuests}{t.booking.guestUnit}</span>
-                </div>
-                <div className="flex justify-between pt-3 border-t border-border">
-                  <span className="font-medium text-foreground">{t.booking.totalAmount}</span>
-                  <span className="font-semibold text-primary">{pricing ? formatCurrency(pricing.totalAmount, locale) : '-'}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="guestName">{t.booking.guestName} *</Label>
-                <Input
-                  id="guestName"
-                  value={formData.guestName}
-                  onChange={(e) => handleInputChange('guestName', e.target.value)}
-                  className="mt-1"
-                  required
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="email">{t.booking.email} *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  className="mt-1"
-                  required
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="phone">{t.booking.phone}</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => handleInputChange('phone', e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="notes">{t.booking.notes}</Label>
-                <Textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) => handleInputChange('notes', e.target.value)}
-                  placeholder={t.booking.notesPlaceholder}
-                  className="mt-1"
-                  rows={3}
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-3 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setStep('select-dates')}
-                className="flex-1"
-              >
-                {t.common.back}
-              </Button>
-              <Button
-                onClick={() => setStep('payment')}
-                disabled={!canProceedToPayment}
-                className="flex-1"
-              >
-                {t.booking.reserveAndPay}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Step 3: Payment */}
-      {step === 'payment' && pricing && (
-        <div className="grid lg:grid-cols-2 gap-6">
-          <div className="space-y-4">
-            <div className="bg-card rounded-lg border border-border p-4">
-              <h3 className="font-medium text-foreground mb-4">{t.booking.confirmation}</h3>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t.booking.guestName}</span>
-                  <span className="text-foreground">{formData.guestName}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t.booking.email}</span>
-                  <span className="text-foreground">{formData.email}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t.booking.checkIn}</span>
-                  <span className="text-foreground">{formatDateDisplay(formData.checkInDate)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t.booking.checkOut}</span>
-                  <span className="text-foreground">{formatDateDisplay(formData.checkOutDate)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t.booking.guests}</span>
-                  <span className="text-foreground">{formData.numberOfGuests}{t.booking.guestUnit}</span>
-                </div>
-              </div>
-            </div>
-
-            <PricingDisplay numberOfNights={numberOfNights} numberOfGuests={formData.numberOfGuests} />
-          </div>
-
-          <div className="space-y-4">
-            <SquarePaymentForm
-              amount={pricing.totalAmount}
-              guestName={formData.guestName}
-              email={formData.email}
-              checkInDate={formData.checkInDate!.toISOString()}
-              checkOutDate={formData.checkOutDate!.toISOString()}
-              numberOfGuests={formData.numberOfGuests}
-              onSuccess={handlePaymentSuccess}
-              onError={handlePaymentError}
-            />
-
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setStep('guest-info')}
-              className="w-full"
-            >
-              {t.common.back}
-            </Button>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   )
 }
