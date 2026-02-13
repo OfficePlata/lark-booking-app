@@ -90,7 +90,10 @@ export interface Reservation {
   numberOfGuests: number
   totalAmount: number
   paymentStatus: 'Pending' | 'Paid' | 'Failed'
-  squareTransactionId?: string
+  // Changed from squareTransactionId to generic paymentTransactionId
+  paymentTransactionId?: string
+  paymentUrl?: string // Added for AirPAY payment link
+  paymentMethod?: string // Added for tracking payment method
   status: 'Confirmed' | 'Cancelled'
 }
 
@@ -172,13 +175,16 @@ export async function getReservations(filters?: {
     reservationId: item.fields['Reservation ID'] as string,
     guestName: item.fields['Guest Name'] as string,
     email: item.fields['Email'] as string,
-    checkInDate: String(item.fields['Check-in Date']), // Note: Date fields might come as timestamp numbers or strings depending on configuration.
+    checkInDate: String(item.fields['Check-in Date']),
     checkOutDate: String(item.fields['Check-out Date']),
     numberOfNights: item.fields['Number of Nights'] as number,
     numberOfGuests: item.fields['Number of Guests'] as number,
     totalAmount: item.fields['Total Amount'] as number,
     paymentStatus: item.fields['Payment Status'] as 'Pending' | 'Paid' | 'Failed',
-    squareTransactionId: item.fields['Square Transaction ID'] as string | undefined,
+    // Updated field mapping
+    paymentTransactionId: item.fields['Payment Transaction ID'] as string | undefined,
+    paymentUrl: (item.fields['Payment URL'] as { link: string })?.link || (item.fields['Payment URL'] as string) || undefined,
+    paymentMethod: item.fields['Payment Method'] as string | undefined,
     status: item.fields['Status'] as 'Confirmed' | 'Cancelled',
   }))
 }
@@ -192,7 +198,10 @@ export interface CreateReservationInput {
   numberOfGuests: number
   totalAmount: number
   paymentStatus: 'Pending' | 'Paid' | 'Failed'
-  squareTransactionId?: string
+  // Changed to generic payment fields
+  paymentTransactionId?: string
+  paymentUrl?: string
+  paymentMethod?: string
   status: 'Confirmed' | 'Cancelled'
 }
 
@@ -223,7 +232,10 @@ export async function createReservation(input: CreateReservationInput): Promise<
           'Number of Guests': input.numberOfGuests,
           'Total Amount': input.totalAmount,
           'Payment Status': input.paymentStatus,
-          'Square Transaction ID': input.squareTransactionId || '',
+          // Updated field names to match new schema
+          'Payment Transaction ID': input.paymentTransactionId || '',
+          'Payment URL': input.paymentUrl ? { link: input.paymentUrl, text: input.paymentUrl } : null,
+          'Payment Method': input.paymentMethod || 'AirPAY',
           'Status': input.status,
         },
       }),
@@ -247,7 +259,9 @@ export async function createReservation(input: CreateReservationInput): Promise<
     numberOfGuests: input.numberOfGuests,
     totalAmount: input.totalAmount,
     paymentStatus: input.paymentStatus,
-    squareTransactionId: input.squareTransactionId,
+    paymentTransactionId: input.paymentTransactionId,
+    paymentUrl: input.paymentUrl,
+    paymentMethod: input.paymentMethod,
     status: input.status,
   }
 }
@@ -270,7 +284,12 @@ export async function updateReservation(
   if (updates.numberOfGuests !== undefined) fields['Number of Guests'] = updates.numberOfGuests
   if (updates.totalAmount !== undefined) fields['Total Amount'] = updates.totalAmount
   if (updates.paymentStatus !== undefined) fields['Payment Status'] = updates.paymentStatus
-  if (updates.squareTransactionId !== undefined) fields['Square Transaction ID'] = updates.squareTransactionId
+  
+  // Updated field mappings
+  if (updates.paymentTransactionId !== undefined) fields['Payment Transaction ID'] = updates.paymentTransactionId
+  if (updates.paymentUrl !== undefined) fields['Payment URL'] = { link: updates.paymentUrl, text: updates.paymentUrl }
+  if (updates.paymentMethod !== undefined) fields['Payment Method'] = updates.paymentMethod
+  
   if (updates.status !== undefined) fields['Status'] = updates.status
 
   const response = await fetch(
