@@ -1,79 +1,80 @@
-// 【ファイル概要】
-// 宿泊料金の目安やプラン内容を紹介するセクションコンポーネントです。
-// 基本料金、設備、サービス内容などをリスト形式でユーザーに伝えます。
-
 'use client'
 
-import { useI18n } from '@/lib/i18n/context'
-import { PricingTable } from '@/components/booking/pricing-display'
-import { formatCurrency, PRICING } from '@/lib/booking/pricing'
+import { Check } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import Link from 'next/link'
+
+// 料金プランの定義（管理しやすくするためにここに記述）
+const PLANS = [
+  {
+    name: '基本プラン',
+    description: '最大6名様まで一棟貸切',
+    price: '¥18,000~',
+    unit: '/泊 (2名様)',
+    features: [
+      '一棟完全貸切',
+      'Wi-Fi / 電源完備',
+      'キッチン / 調理器具利用可',
+      'アメニティ完備',
+      '駐車場あり (2台)',
+    ],
+    buttonText: '予約する',
+    href: '#booking',
+    popular: true,
+  },
+]
 
 export function PricingSection() {
-  const { locale, t } = useI18n()
-
   return (
-    <section id="pricing" className="py-20 bg-muted/30">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-semibold text-foreground mb-4">
-            {t.pricing.title}
-          </h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            {locale === 'ja' 
-              ? '連泊でさらにお得に。3連泊以上で最大33%割引。'
-              : 'Save more with longer stays. Up to 33% off for 3+ nights.'}
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-          {/* Main Pricing Card */}
-          <PricingTable className="md:col-span-2" />
-
-          {/* Feature Cards */}
-          <div className="bg-card rounded-lg border border-border p-6">
-            <h3 className="font-semibold text-foreground mb-4">
-              {locale === 'ja' ? '含まれるもの' : 'Included'}
-            </h3>
-            <ul className="space-y-3 text-sm text-muted-foreground">
-              <li className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs">+</span>
-                {locale === 'ja' ? '無料Wi-Fi' : 'Free Wi-Fi'}
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs">+</span>
-                {locale === 'ja' ? 'アメニティ完備' : 'Full amenities'}
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs">+</span>
-                {locale === 'ja' ? '駐車場無料' : 'Free parking'}
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs">+</span>
-                {locale === 'ja' ? 'チェックイン15:00 / チェックアウト10:00' : 'Check-in 3PM / Check-out 10AM'}
-              </li>
-            </ul>
-          </div>
-
-          <div className="bg-card rounded-lg border border-border p-6">
-            <h3 className="font-semibold text-foreground mb-4">
-              {locale === 'ja' ? 'キャンセルポリシー' : 'Cancellation Policy'}
-            </h3>
-            <ul className="space-y-3 text-sm text-muted-foreground">
-              <li className="flex items-start gap-2">
-                <span className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-xs shrink-0 mt-0.5">-</span>
-                {locale === 'ja' ? '7日前まで: 全額返金' : '7+ days before: Full refund'}
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-xs shrink-0 mt-0.5">-</span>
-                {locale === 'ja' ? '3-6日前: 50%返金' : '3-6 days before: 50% refund'}
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-xs shrink-0 mt-0.5">-</span>
-                {locale === 'ja' ? '2日前以降: 返金不可' : 'Within 2 days: No refund'}
-              </li>
-            </ul>
-          </div>
-        </div>
+    <section id="pricing" className="container py-24 sm:py-32">
+      <div className="mx-auto flex max-w-[58rem] flex-col items-center justify-center gap-4 text-center">
+        <h2 className="text-3xl font-bold leading-[1.1] sm:text-3xl md:text-6xl">
+          宿泊料金
+        </h2>
+        <p className="max-w-[85%] leading-normal text-muted-foreground sm:text-lg sm:leading-7">
+          シンプルでわかりやすい料金体系。連泊するほどお得になります。
+        </p>
+      </div>
+      
+      <div className="grid w-full justify-center gap-8 pt-8 md:grid-cols-1 lg:max-w-3xl lg:mx-auto">
+        {PLANS.map((plan) => (
+          <Card key={plan.name} className={plan.popular ? 'border-primary shadow-lg relative' : ''}>
+            {plan.popular && (
+              <div className="absolute -top-4 left-0 right-0 mx-auto w-fit rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground">
+                人気プラン
+              </div>
+            )}
+            <CardHeader className="text-center">
+              <CardTitle className="text-2xl">{plan.name}</CardTitle>
+              <CardDescription>{plan.description}</CardDescription>
+            </CardHeader>
+            <CardContent className="text-center">
+              <div className="flex items-baseline justify-center gap-1">
+                <span className="text-5xl font-bold tracking-tight">{plan.price}</span>
+                <span className="text-sm font-semibold text-muted-foreground">{plan.unit}</span>
+              </div>
+              <div className="mt-4 flex flex-col gap-2 text-sm text-muted-foreground">
+                <p>※3名様以上は +¥5,000/名</p>
+                <p>※連泊割引あり（2泊で単価¥15,000、3泊以上で¥12,000）</p>
+              </div>
+              
+              <ul className="mt-8 space-y-3 text-left">
+                {plan.features.map((feature) => (
+                  <li key={feature} className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-primary" />
+                    <span className="text-sm">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+            <CardFooter>
+              <Button className="w-full" asChild size="lg">
+                <Link href={plan.href}>{plan.buttonText}</Link>
+              </Button>
+            </CardFooter>
+          </Card>
+        ))}
       </div>
     </section>
   )
