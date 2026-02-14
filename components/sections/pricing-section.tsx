@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import Link from 'next/link'
 
-// 料金プランの定義（管理しやすくするためにここに記述）
 const PLANS = [
   {
     name: '基本プラン',
