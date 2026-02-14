@@ -78,8 +78,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate pricing with new logic
-    // Note: numberOfGuests ensures it's treated as a number
-    const pricing = calculatePrice(validation.nights, Number(numberOfGuests))
+    // Ensure inputs are numbers to avoid calculation errors
+    const nightsNum = validation.nights
+    const guestsNum = Number(numberOfGuests)
+    const pricing = calculatePrice(nightsNum, guestsNum)
 
     // Create reservation in Lark
     const reservation = await createReservation({
@@ -87,9 +89,9 @@ export async function POST(request: NextRequest) {
       email,
       checkInDate,
       checkOutDate,
-      numberOfNights: validation.nights,
-      numberOfGuests: Number(numberOfGuests),
-      totalAmount: pricing.totalAmount, // New pricing logic property
+      numberOfNights: nightsNum,
+      numberOfGuests: guestsNum,
+      totalAmount: pricing.totalAmount, // 新しい計算結果の totalAmount プロパティを使用
       paymentStatus,
       paymentTransactionId,
       paymentUrl,
