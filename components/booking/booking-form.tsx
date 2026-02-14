@@ -117,31 +117,21 @@ export function BookingForm() {
         <div className="bg-card rounded-lg border p-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control} name="guestName"
-                render={({ field }) => (
+              <FormField control={form.control} name="guestName" render={({ field }) => (
                   <FormItem><FormLabel>お名前</FormLabel><FormControl><Input placeholder="山田 太郎" {...field} /></FormControl><FormMessage /></FormItem>
-                )}
-              />
-              <FormField
-                control={form.control} name="email"
-                render={({ field }) => (
+                )} />
+              <FormField control={form.control} name="email" render={({ field }) => (
                   <FormItem><FormLabel>メールアドレス</FormLabel><FormControl><Input type="email" placeholder="mail@example.com" {...field} /></FormControl><FormDescription>決済リンクを送付します</FormDescription><FormMessage /></FormItem>
-                )}
-              />
-              <FormField
-                control={form.control} name="numberOfGuests"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>宿泊人数</FormLabel>
+                )} />
+              <FormField control={form.control} name="numberOfGuests" render={({ field }) => (
+                  <FormItem><FormLabel>宿泊人数</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                       <SelectContent>{[1, 2, 3, 4, 5, 6].map(n => <SelectItem key={n} value={n.toString()}>{n}名</SelectItem>)}</SelectContent>
                     </Select>
                     <FormMessage />
                   </FormItem>
-                )}
-              />
+                )} />
               <div className="pt-4">
                 <Button type="submit" className="w-full" size="lg" disabled={!checkIn || !checkOut || isLoading}>
                   {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />送信中...</> : '予約リクエストを送信'}
