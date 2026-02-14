@@ -1,7 +1,7 @@
 // 【ファイル概要】
 // ユーザーがブラウザ上で操作する「予約フォーム」のコンポーネントです。
 // カレンダーでの日付選択、宿泊者情報の入力、APIへの送信処理を行います。
-// Square決済フォームを削除し、送信後にメール案内を行うフローに変更しています。
+// 数値変換のエラー対策（NaN防止）を追加しています。
 
 'use client'
 
@@ -66,14 +66,18 @@ export function BookingForm() {
     defaultValues: {
       guestName: '',
       email: '',
-      numberOfGuests: '2',
+      numberOfGuests: '2', // 初期値を文字列の '2' に設定
     },
   })
 
-  // Calculate nights
+  // 泊数の計算 (安全策: checkIn/Outが無い場合は0)
   const nights = checkIn && checkOut
-    ? Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24))
+    ? Math.max(0, Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)))
     : 0
+
+  // フォームの値から人数を数値として取得 (安全策: 変換失敗時は0にする)
+  const numberOfGuestsStr = form.watch('numberOfGuests')
+  const numberOfGuests = parseInt(numberOfGuestsStr, 10) || 0
 
   const handleCheckInSelect = (date: Date) => {
     setCheckIn(date)
@@ -105,7 +109,7 @@ export function BookingForm() {
         body: JSON.stringify({
           guestName: values.guestName,
           email: values.email,
-          numberOfGuests: parseInt(values.numberOfGuests),
+          numberOfGuests: parseInt(values.numberOfGuests, 10),
           checkInDate: format(checkIn, 'yyyy-MM-dd'),
           checkOutDate: format(checkOut, 'yyyy-MM-dd'),
           paymentStatus: 'Pending',
@@ -163,10 +167,11 @@ export function BookingForm() {
           className="mb-6"
         />
         
+        {/* checkIn と checkOut が両方ある場合のみ表示 */}
         {checkIn && checkOut && (
           <PricingDisplay 
             nights={nights} 
-            guests={parseInt(form.watch('numberOfGuests'))} 
+            guests={numberOfGuests} 
           />
         )}
       </div>
