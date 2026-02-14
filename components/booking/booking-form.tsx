@@ -37,18 +37,20 @@ export function BookingForm() {
   const [checkOut, setCheckOut] = useState<Date | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
-  
-  // 特別料金データ
   const [specialRates, setSpecialRates] = useState<SpecialRate[]>([])
 
-  // コンポーネントマウント時に特別料金を取得
+  // マウント時に料金APIを叩く
   useEffect(() => {
-    fetch('/api/rates')
-      .then(res => res.json())
-      .then(data => {
-        if(data.rates) setSpecialRates(data.rates)
-      })
-      .catch(err => console.error('Failed to load rates', err))
+    const fetchRates = async () => {
+      try {
+        const res = await fetch('/api/rates')
+        const data = await res.json()
+        if (data.rates) setSpecialRates(data.rates)
+      } catch (e) {
+        console.error('Rates fetch failed', e)
+      }
+    }
+    fetchRates()
   }, [])
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -56,22 +58,17 @@ export function BookingForm() {
     defaultValues: { guestName: '', email: '', numberOfGuests: '2' },
   })
 
-  // 数値変換（文字列の'2'を数値の2にする）
   const numberOfGuestsVal = form.watch('numberOfGuests')
   const numberOfGuests = parseInt(numberOfGuestsVal, 10) || 2
 
-  const handleCheckInSelect = (date: Date) => {
-    setCheckIn(date)
-    setCheckOut(null) 
-  }
-  const handleCheckOutSelect = (date: Date) => { setCheckOut(date) }
+  const handleCheckInSelect = (date: Date) => { setCheckIn(date); setCheckOut(null); }
+  const handleCheckOutSelect = (date: Date) => { setCheckOut(date); }
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!checkIn || !checkOut) {
       toast({ title: "日程を選択してください", variant: "destructive" })
       return
     }
-
     setIsLoading(true)
     try {
       const response = await fetch('/api/reservations', {
@@ -87,17 +84,11 @@ export function BookingForm() {
           paymentMethod: 'AirPAY', 
         }),
       })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || '予約作成失敗')
-      }
-
+      if (!response.ok) throw new Error('Failed')
       setIsSuccess(true)
-      toast({ title: "予約リクエストを受け付けました", description: "確認メールと決済リンクをお送りします。" })
+      toast({ title: "予約リクエスト完了", description: "確認メールをお送りします。" })
     } catch (error) {
-      console.error(error)
-      toast({ title: "エラー", description: "処理中に問題が発生しました", variant: "destructive" })
+      toast({ title: "エラー", description: "予約処理に失敗しました", variant: "destructive" })
     } finally {
       setIsLoading(false)
     }
@@ -107,10 +98,7 @@ export function BookingForm() {
     return (
       <div className="text-center p-8 bg-card rounded-lg border shadow-sm">
         <h3 className="text-2xl font-bold text-green-600 mb-4">リクエスト送信完了</h3>
-        <p className="text-muted-foreground mb-6">
-          ご予約ありがとうございます。<br />メールにて決済リンク(AirPAY)をお送りします。
-        </p>
-        <Button onClick={() => window.location.reload()}>新しい予約を作成</Button>
+        <Button onClick={() => window.location.reload()}>戻る</Button>
       </div>
     )
   }
@@ -126,68 +114,38 @@ export function BookingForm() {
           onSelectCheckOut={handleCheckOutSelect}
           className="mb-6"
         />
-        
-        {/* 日程が選択されている場合のみ料金を表示 */}
         {checkIn && checkOut && (
           <PricingDisplay 
-            checkIn={checkIn}
-            checkOut={checkOut}
+            checkIn={checkIn} 
+            checkOut={checkOut} 
             guests={numberOfGuests} 
-            specialRates={specialRates}
+            specialRates={specialRates} 
           />
         )}
       </div>
-
       <div>
         <h3 className="text-lg font-medium mb-4">2. お客様情報</h3>
         <div className="bg-card rounded-lg border p-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="guestName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>お名前</FormLabel>
-                    <FormControl><Input placeholder="山田 太郎" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>メールアドレス</FormLabel>
-                    <FormControl><Input type="email" placeholder="example@mail.com" {...field} /></FormControl>
-                    <FormDescription>決済リンクを送付します</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="numberOfGuests"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>宿泊人数</FormLabel>
+              <FormField control={form.control} name="guestName" render={({ field }) => (
+                  <FormItem><FormLabel>お名前</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+              <FormField control={form.control} name="email" render={({ field }) => (
+                  <FormItem><FormLabel>メールアドレス</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+              <FormField control={form.control} name="numberOfGuests" render={({ field }) => (
+                  <FormItem><FormLabel>宿泊人数</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        {[1, 2, 3, 4, 5, 6].map(n => <SelectItem key={n} value={n.toString()}>{n}名</SelectItem>)}
-                      </SelectContent>
+                      <SelectContent>{[1,2,3,4,5,6].map(n => <SelectItem key={n} value={String(n)}>{n}名</SelectItem>)}</SelectContent>
                     </Select>
                     <FormMessage />
                   </FormItem>
-                )}
-              />
-              <div className="pt-4">
-                <Button type="submit" className="w-full" size="lg" disabled={!checkIn || !checkOut || isLoading}>
-                  {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />送信中...</> : '予約リクエストを送信'}
-                </Button>
-                <p className="text-xs text-muted-foreground text-center mt-4">AirPAYにてお支払いをお願いします。</p>
-              </div>
+                )} />
+              <Button type="submit" className="w-full" disabled={!checkIn || !checkOut || isLoading}>
+                {isLoading ? '送信中...' : '予約リクエストを送信'}
+              </Button>
             </form>
           </Form>
         </div>
