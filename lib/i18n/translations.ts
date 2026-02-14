@@ -1,3 +1,7 @@
+// 【ファイル概要】
+// アプリケーションで使用する翻訳テキストデータ（辞書）ファイルです。
+// 日本語（ja）と英語（en）のテキストリソースをオブジェクト形式で管理します。
+
 export type Locale = 'ja' | 'en'
 
 export const translations = {
