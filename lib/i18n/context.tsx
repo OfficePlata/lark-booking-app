@@ -1,3 +1,7 @@
+// 【ファイル概要】
+// 多言語対応（i18n）のためのContext Providerです。
+// 現在の言語設定（日本語/英語）と、それに応じた翻訳データをアプリケーション全体に供給します。
+
 'use client'
 
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
