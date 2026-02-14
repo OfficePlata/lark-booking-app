@@ -1,6 +1,6 @@
 // 【ファイル概要】
 // Lark Base (多維表格) との通信を行う主要ファイルです。
-// 予約データの取得・作成と、オーナーが設定した「特別料金」の取得を行います。
+// 予約データの取得・作成、特別料金の取得を行います。
 
 interface LarkTokenResponse {
   code: number
@@ -54,8 +54,8 @@ async function getTenantAccessToken(): Promise<string> {
 export interface SpecialRate {
   id: string
   name: string
-  startDate: string // YYYY-MM-DD形式
-  endDate: string   // YYYY-MM-DD形式
+  startDate: string
+  endDate: string
   pricePerNight: number
   priority: number
 }
@@ -78,10 +78,9 @@ export async function getSpecialRates(): Promise<SpecialRate[]> {
     if (data.code !== 0) return []
 
     return data.data.items.map((item) => {
-      // Larkの日付フィールドはタイムスタンプ(数値)で返ることがあるため変換
       const toDateStr = (val: unknown) => {
         if (typeof val === 'number') return new Date(val).toISOString().split('T')[0]
-        if (typeof val === 'string') return val.split('T')[0] // 時間部分は削除
+        if (typeof val === 'string') return val.split('T')[0]
         return ''
       }
 
@@ -93,7 +92,7 @@ export async function getSpecialRates(): Promise<SpecialRate[]> {
         pricePerNight: Number(item.fields['Price per Night']) || 0,
         priority: Number(item.fields['Priority']) || 0,
       }
-    }).filter(r => r.startDate && r.endDate) // 有効な日付があるものだけ
+    }).filter(r => r.startDate && r.endDate)
   } catch (error) {
     console.error('getSpecialRates Error:', error)
     return []
@@ -206,4 +205,16 @@ export async function getBookedDatesInRange(start: string, end: string) {
     dates.push({ date: dateStr, isBooked: bookedSet.has(dateStr) })
   }
   return dates
+}
+
+// 【追加】ビルドエラー修正のための関数
+export async function getBookedDates(): Promise<string[]> {
+  const today = new Date().toISOString().split('T')[0]
+  // 簡易的に今日から3年後までの予約済み日付リストを返す
+  const futureDate = new Date()
+  futureDate.setFullYear(futureDate.getFullYear() + 3)
+  const endDate = futureDate.toISOString().split('T')[0]
+
+  const range = await getBookedDatesInRange(today, endDate)
+  return range.filter(d => d.isBooked).map(d => d.date)
 }
