@@ -16,11 +16,9 @@ interface PricingDisplayProps {
 
 export function PricingDisplay({ checkIn, checkOut, guests, specialRates }: PricingDisplayProps) {
   const { t } = useI18n()
-  
   if (!checkIn || !checkOut || guests <= 0) return null
 
   const price = calculatePrice(checkIn, checkOut, guests, specialRates)
-
   if (isNaN(price.totalAmount) || price.numberOfNights <= 0) return null
 
   const hasSpecialRate = price.dates.some(d => d.isSpecialRate)
