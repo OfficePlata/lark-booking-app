@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 
-// メッセージの型定義を追加
+// メッセージの型定義
 type Message = {
   id: number
   sender: 'guest' | 'owner'
@@ -18,7 +18,7 @@ type Message = {
   type: 'mail'
 }
 
-// 型を適用したモックデータ
+// 初期データ（モック）
 const MOCK_MESSAGES: Message[] = [
   { 
     id: 1, 
@@ -39,7 +39,6 @@ const MOCK_MESSAGES: Message[] = [
 ]
 
 export function MailChatInterface() {
-  // useStateに型を指定
   const [messages, setMessages] = useState<Message[]>(MOCK_MESSAGES)
   const [inputValue, setInputValue] = useState('')
 
@@ -60,13 +59,13 @@ export function MailChatInterface() {
   }
 
   return (
-    <div className="flex flex-col h-[600px] w-full max-w-md bg-background border rounded-xl shadow-xl overflow-hidden">
+    <div className="flex flex-col h-[600px] w-full max-w-md bg-background border rounded-xl shadow-xl overflow-hidden mx-auto">
       {/* ヘッダー部分 */}
       <div className="bg-primary/5 p-4 border-b flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Avatar>
-            <AvatarImage src="/placeholder-user.jpg" />
-            <AvatarFallback>Guest</AvatarFallback>
+            <AvatarImage src="/placeholder-user.jpg" alt="Guest" />
+            <AvatarFallback>G</AvatarFallback>
           </Avatar>
           <div>
             <h3 className="font-bold text-sm">山田 太郎 様</h3>
@@ -101,11 +100,16 @@ export function MailChatInterface() {
               className={`flex ${msg.sender === 'owner' ? 'justify-end' : 'justify-start'}`}
             >
               <div className={`flex gap-2 max-w-[85%] ${msg.sender === 'owner' ? 'flex-row-reverse' : ''}`}>
-                {msg.sender === 'guest' && (
-                  <Avatar className="w-8 h-8 mt-1">
-                    <AvatarFallback>G</AvatarFallback>
-                  </Avatar>
-                )}
+                <Avatar className="w-8 h-8 mt-1">
+                  {msg.sender === 'guest' ? (
+                    <>
+                      <AvatarImage src="/placeholder-user.jpg" />
+                      <AvatarFallback>G</AvatarFallback>
+                    </>
+                  ) : (
+                    <AvatarFallback className="bg-primary text-primary-foreground">Own</AvatarFallback>
+                  )}
+                </Avatar>
                 
                 <div className="flex flex-col gap-1">
                   <div
