@@ -1,96 +1,146 @@
 // 【ファイル概要】
-// 宿泊料金計算のビジネスロジックを担当するユーティリティファイルです。
-// 基本料金の設定、泊数や人数に応じた合計金額の計算処理などが定義されています。
+// 宿泊料金計算のビジネスロジックです。
+// Larkから取得した「特別料金」と「基本の連泊割引」を組み合わせて、日ごとに正確な料金を計算します。
 
-// Pricing Logic
-// Base rate (for 1 room, up to 2 guests) varies by consecutive nights:
-// - 1 night: ¥18,000/night
-// - 2 nights: ¥15,000/night
-// - 3+ nights: ¥12,000/night
-// Additional guests (3rd person onwards): ¥5,000/night/person
+import { SpecialRate } from "@/lib/lark"
 
-export const PRICING = {
-  baseRates: {
-    1: 18000, // 1 night
-    2: 15000, // 2 consecutive nights
-    3: 12000, // 3+ consecutive nights
-  },
-  additionalGuestRate: 5000, // per night per person
-  maxGuests: 6,
-  minGuests: 1,
-  baseGuestCount: 2, // Base price includes up to 2 guests
-} as const
+// 基本設定
+export const BASE_CONFIG = {
+  baseGuestCount: 2,      // 基本料金に含まれる人数
+  additionalGuestRate: 5000, // 追加人数1名あたりの料金
+  defaultRates: {
+    1: 18000, // 1泊のみの単価
+    2: 15000, // 2連泊時の単価
+    3: 12000, // 3連泊以上の単価
+  }
+}
 
 export interface PricingBreakdown {
   numberOfNights: number
   numberOfGuests: number
-  ratePerNight: number
+  dates: {
+    date: string
+    price: number
+    isSpecialRate: boolean
+    specialRateName?: string
+  }[]
   baseTotal: number
   additionalGuests: number
   additionalGuestTotal: number
   totalAmount: number
+  ratePerNight?: number // For backward compatibility / display summary
 }
 
 /**
- * Calculate the total price for a stay
- * @param numberOfNights - Number of consecutive nights
- * @param numberOfGuests - Total number of guests
- * @returns Detailed pricing breakdown
+ * 料金計算のメイン関数
  */
-export function calculatePrice(numberOfNights: number, numberOfGuests: number): PricingBreakdown {
-  // Determine the rate per night based on consecutive nights
-  let ratePerNight: number
-  if (numberOfNights >= 3) {
-    ratePerNight = PRICING.baseRates[3]
-  } else if (numberOfNights === 2) {
-    ratePerNight = PRICING.baseRates[2]
-  } else {
-    ratePerNight = PRICING.baseRates[1]
+export function calculatePrice(
+  checkIn: Date | number,
+  checkOut: Date | number,
+  guests?: number,
+  specialRates: SpecialRate[] = []
+): PricingBreakdown {
+  
+  // 引数が (nights, guests) の古い形式で呼ばれた場合のフォールバック（特別料金なし）
+  if (typeof checkIn === 'number' && typeof checkOut === 'number') {
+    return calculatePriceLegacy(checkIn, checkOut)
   }
 
-  // Calculate base total (for up to 2 guests)
-  const baseTotal = ratePerNight * numberOfNights
+  const inDate = checkIn as Date
+  const outDate = checkOut as Date
+  const numGuests = guests || 2
 
-  // Calculate additional guest charges
-  // Use safe calculation to prevent negative numbers if guests < 2
-  const additionalGuests = Math.max(0, (numberOfGuests || 0) - PRICING.baseGuestCount)
-  const additionalGuestTotal = additionalGuests * PRICING.additionalGuestRate * numberOfNights
+  const oneDay = 1000 * 60 * 60 * 24
+  // 泊数計算
+  const diffTime = outDate.getTime() - inDate.getTime()
+  const numberOfNights = Math.round(diffTime / oneDay)
 
-  // Total amount
+  if (numberOfNights <= 0) {
+    return {
+      numberOfNights: 0, numberOfGuests: numGuests, dates: [], baseTotal: 0,
+      additionalGuests: 0, additionalGuestTotal: 0, totalAmount: 0
+    }
+  }
+
+  // 1. 基本単価の決定 (連泊数による割引)
+  let standardRate = BASE_CONFIG.defaultRates[1]
+  if (numberOfNights === 2) standardRate = BASE_CONFIG.defaultRates[2]
+  if (numberOfNights >= 3) standardRate = BASE_CONFIG.defaultRates[3]
+
+  // 2. 日ごとの料金計算
+  const dateDetails = []
+  let baseTotal = 0
+
+  for (let i = 0; i < numberOfNights; i++) {
+    const currentDate = new Date(inDate.getTime() + (i * oneDay))
+    const dateStr = currentDate.toISOString().split('T')[0]
+
+    // 特別料金の検索 (期間内で、優先度が最も高いものを探す)
+    const specialRate = specialRates
+      .filter(r => dateStr >= r.startDate && dateStr <= r.endDate)
+      .sort((a, b) => b.priority - a.priority)[0] // 優先度順
+
+    if (specialRate) {
+      dateDetails.push({
+        date: dateStr,
+        price: specialRate.pricePerNight,
+        isSpecialRate: true,
+        specialRateName: specialRate.name
+      })
+      baseTotal += specialRate.pricePerNight
+    } else {
+      dateDetails.push({
+        date: dateStr,
+        price: standardRate,
+        isSpecialRate: false
+      })
+      baseTotal += standardRate
+    }
+  }
+
+  // 3. 追加人数料金の計算
+  const additionalGuests = Math.max(0, numGuests - BASE_CONFIG.baseGuestCount)
+  const additionalGuestTotal = additionalGuests * BASE_CONFIG.additionalGuestRate * numberOfNights
+
+  // 4. 合計
   const totalAmount = baseTotal + additionalGuestTotal
 
   return {
     numberOfNights,
-    numberOfGuests,
-    ratePerNight,
+    numberOfGuests: numGuests,
+    dates: dateDetails,
     baseTotal,
     additionalGuests,
     additionalGuestTotal,
     totalAmount,
+    ratePerNight: standardRate // 参考用
   }
 }
 
-/**
- * Format currency in Japanese Yen
- * @param amount - Amount in JPY
- * @param locale - 'ja' or 'en'
- * @returns Formatted currency string
- */
-export function formatCurrency(amount: number, locale: 'ja' | 'en' = 'ja'): string {
+// レガシーサポート
+function calculatePriceLegacy(nights: number, guests: number): PricingBreakdown {
+  let rate = BASE_CONFIG.defaultRates[1]
+  if (nights === 2) rate = BASE_CONFIG.defaultRates[2]
+  if (nights >= 3) rate = BASE_CONFIG.defaultRates[3]
+
+  const baseTotal = rate * nights
+  const additionalGuests = Math.max(0, guests - BASE_CONFIG.baseGuestCount)
+  const additionalGuestTotal = additionalGuests * BASE_CONFIG.additionalGuestRate * nights
+  const totalAmount = baseTotal + additionalGuestTotal
+
+  return {
+    numberOfNights: nights,
+    numberOfGuests: guests,
+    dates: [],
+    baseTotal,
+    additionalGuests,
+    additionalGuestTotal,
+    totalAmount,
+    ratePerNight: rate
+  }
+}
+
+export function formatCurrency(amount: number) {
   if (isNaN(amount)) return '¥0'
-  if (locale === 'ja') {
-    return `¥${amount.toLocaleString('ja-JP')}`
-  }
-  return `¥${amount.toLocaleString('en-US')}`
-}
-
-/**
- * Get price per night for display
- * @param nights - Number of nights
- * @returns Price per night
- */
-export function getPricePerNight(nights: number): number {
-  if (nights >= 3) return PRICING.baseRates[3]
-  if (nights === 2) return PRICING.baseRates[2]
-  return PRICING.baseRates[1]
+  return new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(amount)
 }
