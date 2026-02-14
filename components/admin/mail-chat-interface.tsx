@@ -1,3 +1,4 @@
+// 【重要】このファイルは components/admin/ フォルダの中に mail-chat-interface.tsx という名前で保存してください
 'use client'
 
 import { useState } from 'react'
