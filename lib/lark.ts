@@ -1,7 +1,7 @@
 // 【ファイル概要】
 // Lark Base (多維表格) との通信を行う主要ファイルです。
-// 予約データの取得、作成、更新に加え、「特別料金テーブル（Special Rates）」の取得を行います。
-
+// 予約データの取得・作成と、オーナーが設定した「特別料金」の取得を行います。
+// GASへの通知機能は削除されています。
 
 // Environment variables required:
 // - LARK_APP_ID
@@ -87,17 +87,15 @@ export async function getSpecialRates(): Promise<SpecialRate[]> {
   const baseId = process.env.LARK_BASE_ID
   const tableId = process.env.LARK_SPECIAL_RATES_TABLE_ID
 
-  // 特別料金テーブルが未設定の場合は空配列を返してエラーを防ぐ
   if (!tableId) return []
 
-  // 今日以降のデータを取得するためのフィルタリング準備
   const today = new Date().toISOString().split('T')[0]
   const url = `https://open.larksuite.com/open-apis/bitable/v1/apps/${baseId}/tables/${tableId}/records`
 
   try {
     const response = await fetch(url, {
       headers: { Authorization: `Bearer ${token}` },
-      next: { revalidate: 60 } // 1分ごとにキャッシュ更新
+      next: { revalidate: 60 } // 1分キャッシュ
     })
 
     const data: LarkListResponse = await response.json()
@@ -107,10 +105,8 @@ export async function getSpecialRates(): Promise<SpecialRate[]> {
       return []
     }
 
-    // データ変換とフィルタリング
     return data.data.items
       .map((item) => {
-        // フィールド値の型安全な取り出し
         const endVal = item.fields['End Date']
         const startVal = item.fields['Start Date']
         
@@ -131,7 +127,6 @@ export async function getSpecialRates(): Promise<SpecialRate[]> {
           priority: Number(item.fields['Priority']) || 0,
         }
       })
-      // 過去の特別料金を除外（endDateが今日より前のものは除外）
       .filter(rate => rate.endDate >= today)
   } catch (error) {
     console.error('Error in getSpecialRates:', error)
@@ -179,7 +174,6 @@ export async function createReservation(input: CreateReservationInput): Promise<
   const tableId = process.env.LARK_RESERVATIONS_TABLE_ID
   const reservationId = `RES-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
 
-  // Larkへの保存
   const response = await fetch(
     `https://open.larksuite.com/open-apis/bitable/v1/apps/${baseId}/tables/${tableId}/records`,
     {
@@ -298,6 +292,12 @@ export async function getBookedDatesInRange(start: string, end: string) {
     dates.push({ date: dateStr, isBooked: bookedSet.has(dateStr) })
   }
   return dates
+}
+
+export async function getBookedDates() {
+  const today = new Date().toISOString().split('T')[0]
+  const datesObj = await getBookedDatesInRange(today, '2030-12-31') // 簡易的に未来まで取得
+  return datesObj.filter(d => d.isBooked).map(d => d.date)
 }
 
 export async function getRooms() {
