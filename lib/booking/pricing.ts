@@ -52,7 +52,8 @@ export function calculatePrice(numberOfNights: number, numberOfGuests: number): 
   const baseTotal = ratePerNight * numberOfNights
 
   // Calculate additional guest charges
-  const additionalGuests = Math.max(0, numberOfGuests - PRICING.baseGuestCount)
+  // Use safe calculation to prevent negative numbers if guests < 2
+  const additionalGuests = Math.max(0, (numberOfGuests || 0) - PRICING.baseGuestCount)
   const additionalGuestTotal = additionalGuests * PRICING.additionalGuestRate * numberOfNights
 
   // Total amount
@@ -76,6 +77,7 @@ export function calculatePrice(numberOfNights: number, numberOfGuests: number): 
  * @returns Formatted currency string
  */
 export function formatCurrency(amount: number, locale: 'ja' | 'en' = 'ja'): string {
+  if (isNaN(amount)) return '¥0'
   if (locale === 'ja') {
     return `¥${amount.toLocaleString('ja-JP')}`
   }
