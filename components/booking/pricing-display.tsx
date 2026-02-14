@@ -18,31 +18,25 @@ interface PricingDisplayProps {
 export function PricingDisplay({ checkIn, checkOut, guests, specialRates }: PricingDisplayProps) {
   const { t } = useI18n()
   
-  // データが不完全な場合は表示しない
-  if (!checkIn || !checkOut || !guests) return null
+  if (!checkIn || !checkOut || guests <= 0) return null
 
-  // 日付ベースの計算を実行
   const price = calculatePrice(checkIn, checkOut, guests, specialRates)
 
-  // 計算結果が無効（0泊など）の場合は表示しない
   if (!price || isNaN(price.totalAmount) || price.numberOfNights <= 0) return null
 
-  // 特別料金が含まれているかチェック
   const hasSpecialRate = price.dates.some(d => d.isSpecialRate)
 
   return (
     <Card className="mt-6 border-2 border-primary/10 bg-primary/5">
       <CardContent className="pt-6">
         <h4 className="font-semibold text-lg mb-4">{t.booking.priceDetails}</h4>
-        
         <div className="space-y-3 text-sm">
-          {/* 基本料金部分 */}
           <div className="flex justify-between items-start">
             <div className="text-muted-foreground">
               {t.booking.baseRate || '宿泊料金'} ({price.numberOfNights}泊)<br/>
               <span className="text-xs opacity-80">
                 {hasSpecialRate ? (
-                  <span className="text-amber-600 font-medium">特別料金適用期間が含まれています</span>
+                  <span className="text-amber-600 font-bold">特別料金適用期間あり</span>
                 ) : (
                   <>通常料金 ({formatCurrency(price.dates[0]?.price || 0)} /泊)</>
                 )}
@@ -50,8 +44,6 @@ export function PricingDisplay({ checkIn, checkOut, guests, specialRates }: Pric
             </div>
             <span>{formatCurrency(price.baseTotal)}</span>
           </div>
-
-          {/* 追加人数料金 */}
           {price.additionalGuestTotal > 0 && (
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">
@@ -60,17 +52,11 @@ export function PricingDisplay({ checkIn, checkOut, guests, specialRates }: Pric
               <span>{formatCurrency(price.additionalGuestTotal)}</span>
             </div>
           )}
-
           <Separator className="my-4" />
-
-          {/* 合計 */}
           <div className="flex justify-between items-center">
             <span className="font-bold text-lg">{t.booking.total}</span>
-            <span className="font-bold text-xl text-primary">
-              {formatCurrency(price.totalAmount)}
-            </span>
+            <span className="font-bold text-xl text-primary">{formatCurrency(price.totalAmount)}</span>
           </div>
-          
           <p className="text-xs text-right text-muted-foreground mt-1">(税込)</p>
         </div>
       </CardContent>
