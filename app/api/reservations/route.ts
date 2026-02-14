@@ -26,7 +26,6 @@ export async function GET(request: NextRequest) {
     const reservations = await getReservations({ status: 'Confirmed' })
     return NextResponse.json({ reservations })
   } catch (error) {
-    console.error('Error fetching reservations:', error)
     return NextResponse.json({ error: 'Failed' }, { status: 500 })
   }
 }
@@ -51,7 +50,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: validation.message }, { status: 400 })
     }
 
-    // サーバーサイドで特別料金を取得・計算
     const specialRates = await getSpecialRates()
     const pricing = calculatePrice(checkIn, checkOut, Number(numberOfGuests), specialRates)
 
@@ -59,7 +57,6 @@ export async function POST(request: NextRequest) {
        return NextResponse.json({ error: 'Price calculation error' }, { status: 400 })
     }
 
-    // Larkへ保存
     const reservation = await createReservation({
       guestName,
       email,
@@ -77,7 +74,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ reservation, pricing })
   } catch (error) {
-    console.error('Error creating reservation:', error)
+    console.error(error)
     return NextResponse.json({ error: 'Failed to create reservation' }, { status: 500 })
   }
 }
