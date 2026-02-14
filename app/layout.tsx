@@ -1,3 +1,7 @@
+// 【ファイル概要】
+// アプリケーションのルートレイアウトコンポーネントです。
+// 全ページ共通のHTML構造、フォント設定、テーマプロバイダー、トースト通知の配置などを行います。
+
 import React from "react"
 import type { Metadata, Viewport } from 'next'
 import { Noto_Sans_JP, Geist } from 'next/font/google'
