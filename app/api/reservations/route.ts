@@ -1,3 +1,8 @@
+// 【ファイル概要】
+// 予約に関するAPIエンドポイント（サーバーサイド）です。
+// GET: カレンダーの予約済み日付や予約一覧を取得します。
+// POST: フロントエンドからの予約リクエストを受け取り、Larkへデータを送信します。
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createReservation, getReservations, getBookedDatesInRange } from '@/lib/lark'
 import { calculatePrice } from '@/lib/booking/pricing'
