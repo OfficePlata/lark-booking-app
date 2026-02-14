@@ -1,6 +1,7 @@
 // 【ファイル概要】
 // 選択された日程と人数に基づいて、宿泊料金の計算結果を表示するコンポーネントです。
-// 連泊数に応じた単価の変動や、追加人数料金の内訳をユーザーに提示します。
+// 連泊数に応じた割引単価や、追加人数料金の内訳をユーザーに提示します。
+// lib/booking/pricing.ts の新ロジック（PricingBreakdown型）に対応しています。
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -15,15 +16,18 @@ interface PricingDisplayProps {
 export function PricingDisplay({ nights, guests }: PricingDisplayProps) {
   const { t } = useI18n()
   
-  // 計算実行
-  // nights や guests が 0 や NaN の場合、calculatePrice内で安全に処理されるか、
-  // ここでガードして表示を制御する
-  if (!nights || nights <= 0) return null;
+  // 安全策: 泊数や人数が不正な場合は何も表示しない
+  if (!nights || nights <= 0 || !guests || guests <= 0) {
+    return null
+  }
 
+  // 計算実行
   const price = calculatePrice(nights, guests)
 
-  // NaNチェック
-  if (isNaN(price.totalAmount)) return null
+  // NaNチェック (計算結果が数値でない場合は表示しない)
+  if (isNaN(price.totalAmount)) {
+    return null
+  }
 
   return (
     <Card className="mt-6 border-2 border-primary/10 bg-primary/5">
@@ -31,10 +35,11 @@ export function PricingDisplay({ nights, guests }: PricingDisplayProps) {
         <h4 className="font-semibold text-lg mb-4">{t.booking.priceDetails}</h4>
         
         <div className="space-y-3 text-sm">
-          {/* 基本料金 (単価 × 泊数) */}
+          {/* 基本料金 (割引適用後の単価 × 泊数) */}
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground">
-              {t.booking.baseRate} ({formatCurrency(price.ratePerNight)} × {nights}泊)
+              {/* 多言語対応のキーがない場合のフォールバック付き */}
+              {t.booking.baseRate || '基本料金'} ({formatCurrency(price.ratePerNight)} × {nights}泊)
             </span>
             <span>{formatCurrency(price.baseTotal)}</span>
           </div>
