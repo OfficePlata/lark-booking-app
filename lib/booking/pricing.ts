@@ -1,7 +1,3 @@
-// 【ファイル概要】
-// 選択された日程と人数、そして「特別料金」に基づいて計算結果を表示します。
-// 日ごとに異なる料金（平日、休日、特別日）を合算した正確な内訳を表示します。
-
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { calculatePrice, formatCurrency } from '@/lib/booking/pricing'
