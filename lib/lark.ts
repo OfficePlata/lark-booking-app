@@ -1,10 +1,13 @@
-// Lark (Bitable) API Client
+// 【ファイル概要】
+// Lark Base との通信を行う主要ファイルです。
+// 予約データの取得、作成、更新や、アクセストークンの管理を行います。
+// Squareへの依存を排除し、AirPAY等の汎用的な決済記録に対応しています。
+
 // Environment variables required:
 // - LARK_APP_ID
 // - LARK_APP_SECRET
 // - LARK_BASE_ID
 // - LARK_RESERVATIONS_TABLE_ID
-// (LARK_ROOMS_TABLE_ID is no longer required for single-property setup)
 
 interface LarkTokenResponse {
   code: number
