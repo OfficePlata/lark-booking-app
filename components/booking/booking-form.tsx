@@ -1,7 +1,4 @@
-// 【ファイル概要】
-// ユーザーがブラウザ上で操作する「予約フォーム」のコンポーネントです。
-// マウント時に「特別料金」を取得し、PricingDisplayへ渡します。
-
+// 【重要】components/booking/booking-form.tsx として保存してください
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -37,20 +34,24 @@ export function BookingForm() {
   const [checkOut, setCheckOut] = useState<Date | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
+  
+  // 特別料金データの状態管理
   const [specialRates, setSpecialRates] = useState<SpecialRate[]>([])
 
-  // マウント時に料金APIを叩く
+  // ページ読み込み時に特別料金を取得
   useEffect(() => {
-    const fetchRates = async () => {
+    async function loadRates() {
       try {
         const res = await fetch('/api/rates')
         const data = await res.json()
-        if (data.rates) setSpecialRates(data.rates)
+        if (data.rates && Array.isArray(data.rates)) {
+          setSpecialRates(data.rates)
+        }
       } catch (e) {
-        console.error('Rates fetch failed', e)
+        console.error('Failed to load rates', e)
       }
     }
-    fetchRates()
+    loadRates()
   }, [])
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -58,6 +59,7 @@ export function BookingForm() {
     defaultValues: { guestName: '', email: '', numberOfGuests: '2' },
   })
 
+  // 人数を数値として取得（デフォルト2名）
   const numberOfGuestsVal = form.watch('numberOfGuests')
   const numberOfGuests = parseInt(numberOfGuestsVal, 10) || 2
 
@@ -84,11 +86,11 @@ export function BookingForm() {
           paymentMethod: 'AirPAY', 
         }),
       })
-      if (!response.ok) throw new Error('Failed')
+      if (!response.ok) throw new Error('予約作成に失敗しました')
       setIsSuccess(true)
       toast({ title: "予約リクエスト完了", description: "確認メールをお送りします。" })
     } catch (error) {
-      toast({ title: "エラー", description: "予約処理に失敗しました", variant: "destructive" })
+      toast({ title: "エラー", description: "処理中に問題が発生しました", variant: "destructive" })
     } finally {
       setIsLoading(false)
     }
@@ -97,8 +99,9 @@ export function BookingForm() {
   if (isSuccess) {
     return (
       <div className="text-center p-8 bg-card rounded-lg border shadow-sm">
-        <h3 className="text-2xl font-bold text-green-600 mb-4">リクエスト送信完了</h3>
-        <Button onClick={() => window.location.reload()}>戻る</Button>
+        <h3 className="text-2xl font-bold text-green-600 mb-4">予約リクエスト完了</h3>
+        <p className="text-muted-foreground mb-6">メールにて決済リンクをお送りします。</p>
+        <Button onClick={() => window.location.reload()}>続けて予約する</Button>
       </div>
     )
   }
@@ -114,6 +117,8 @@ export function BookingForm() {
           onSelectCheckOut={handleCheckOutSelect}
           className="mb-6"
         />
+        
+        {/* 日程が選択されたら料金表示コンポーネントを表示 */}
         {checkIn && checkOut && (
           <PricingDisplay 
             checkIn={checkIn} 
@@ -123,29 +128,32 @@ export function BookingForm() {
           />
         )}
       </div>
+
       <div>
         <h3 className="text-lg font-medium mb-4">2. お客様情報</h3>
         <div className="bg-card rounded-lg border p-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField control={form.control} name="guestName" render={({ field }) => (
-                  <FormItem><FormLabel>お名前</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel>お名前</FormLabel><FormControl><Input placeholder="山田 太郎" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
               <FormField control={form.control} name="email" render={({ field }) => (
-                  <FormItem><FormLabel>メールアドレス</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel>メールアドレス</FormLabel><FormControl><Input type="email" placeholder="mail@example.com" {...field} /></FormControl><FormDescription>決済リンクを送付します</FormDescription><FormMessage /></FormItem>
                 )} />
               <FormField control={form.control} name="numberOfGuests" render={({ field }) => (
                   <FormItem><FormLabel>宿泊人数</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                      <SelectContent>{[1,2,3,4,5,6].map(n => <SelectItem key={n} value={String(n)}>{n}名</SelectItem>)}</SelectContent>
+                      <SelectContent>{[1, 2, 3, 4, 5, 6].map(n => <SelectItem key={n} value={n.toString()}>{n}名</SelectItem>)}</SelectContent>
                     </Select>
                     <FormMessage />
                   </FormItem>
                 )} />
-              <Button type="submit" className="w-full" disabled={!checkIn || !checkOut || isLoading}>
-                {isLoading ? '送信中...' : '予約リクエストを送信'}
-              </Button>
+              <div className="pt-4">
+                <Button type="submit" className="w-full" size="lg" disabled={!checkIn || !checkOut || isLoading}>
+                  {isLoading ? '送信中...' : '予約リクエストを送信'}
+                </Button>
+              </div>
             </form>
           </Form>
         </div>
