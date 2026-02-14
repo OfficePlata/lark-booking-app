@@ -1,14 +1,6 @@
 // 【ファイル概要】
 // Lark Base (多維表格) との通信を行う主要ファイルです。
 // 予約データの取得・作成と、オーナーが設定した「特別料金」の取得を行います。
-// GASへの通知機能は削除されています。
-
-// Environment variables required:
-// - LARK_APP_ID
-// - LARK_APP_SECRET
-// - LARK_BASE_ID
-// - LARK_RESERVATIONS_TABLE_ID
-// - LARK_SPECIAL_RATES_TABLE_ID
 
 interface LarkTokenResponse {
   code: number
@@ -21,18 +13,8 @@ interface LarkListResponse {
   code: number
   msg: string
   data: {
-    has_more: boolean
-    page_token?: string
     items: LarkRecord[]
     total: number
-  }
-}
-
-interface LarkCreateResponse {
-  code: number
-  msg: string
-  data: {
-    record: LarkRecord
   }
 }
 
@@ -43,7 +25,6 @@ interface LarkRecord {
 
 let cachedToken: { token: string; expiresAt: number } | null = null
 
-// トークン取得処理
 async function getTenantAccessToken(): Promise<string> {
   if (cachedToken && Date.now() < cachedToken.expiresAt) {
     return cachedToken.token
@@ -59,10 +40,7 @@ async function getTenantAccessToken(): Promise<string> {
   })
 
   const data: LarkTokenResponse = await response.json()
-  if (data.code !== 0) {
-    console.error('Lark Token Error:', data)
-    throw new Error(`Failed to get Lark access token: ${data.msg}`)
-  }
+  if (data.code !== 0) throw new Error(`Lark Token Error: ${data.msg}`)
 
   cachedToken = {
     token: data.tenant_access_token,
@@ -71,74 +49,60 @@ async function getTenantAccessToken(): Promise<string> {
   return data.tenant_access_token
 }
 
-// --- 特別料金 (Special Rates) の取得 ---
+// --- 特別料金 (Special Rates) ---
 
 export interface SpecialRate {
   id: string
   name: string
-  startDate: string
-  endDate: string
+  startDate: string // YYYY-MM-DD形式
+  endDate: string   // YYYY-MM-DD形式
   pricePerNight: number
   priority: number
 }
 
 export async function getSpecialRates(): Promise<SpecialRate[]> {
-  const token = await getTenantAccessToken()
-  const baseId = process.env.LARK_BASE_ID
-  const tableId = process.env.LARK_SPECIAL_RATES_TABLE_ID
-
-  if (!tableId) return []
-
-  const today = new Date().toISOString().split('T')[0]
-  const url = `https://open.larksuite.com/open-apis/bitable/v1/apps/${baseId}/tables/${tableId}/records`
-
   try {
+    const token = await getTenantAccessToken()
+    const baseId = process.env.LARK_BASE_ID
+    const tableId = process.env.LARK_SPECIAL_RATES_TABLE_ID
+
+    if (!tableId) return []
+
+    const url = `https://open.larksuite.com/open-apis/bitable/v1/apps/${baseId}/tables/${tableId}/records`
     const response = await fetch(url, {
       headers: { Authorization: `Bearer ${token}` },
-      next: { revalidate: 60 } // 1分キャッシュ
+      next: { revalidate: 60 }
     })
 
     const data: LarkListResponse = await response.json()
-    
-    if (data.code !== 0) {
-      console.warn(`Failed to fetch special rates: ${data.msg}`)
-      return []
-    }
+    if (data.code !== 0) return []
 
-    return data.data.items
-      .map((item) => {
-        const endVal = item.fields['End Date']
-        const startVal = item.fields['Start Date']
-        
-        const endDateStr = typeof endVal === 'number' 
-          ? new Date(endVal).toISOString().split('T')[0] 
-          : String(endVal || '')
+    return data.data.items.map((item) => {
+      // Larkの日付フィールドはタイムスタンプ(数値)で返ることがあるため変換
+      const toDateStr = (val: unknown) => {
+        if (typeof val === 'number') return new Date(val).toISOString().split('T')[0]
+        if (typeof val === 'string') return val.split('T')[0] // 時間部分は削除
+        return ''
+      }
 
-        const startDateStr = typeof startVal === 'number' 
-          ? new Date(startVal).toISOString().split('T')[0] 
-          : String(startVal || '')
-
-        return {
-          id: item.record_id,
-          name: (item.fields['Name'] as string) || '',
-          startDate: startDateStr,
-          endDate: endDateStr,
-          pricePerNight: Number(item.fields['Price per Night']) || 0,
-          priority: Number(item.fields['Priority']) || 0,
-        }
-      })
-      .filter(rate => rate.endDate >= today)
+      return {
+        id: item.record_id,
+        name: String(item.fields['Name'] || ''),
+        startDate: toDateStr(item.fields['Start Date']),
+        endDate: toDateStr(item.fields['End Date']),
+        pricePerNight: Number(item.fields['Price per Night']) || 0,
+        priority: Number(item.fields['Priority']) || 0,
+      }
+    }).filter(r => r.startDate && r.endDate) // 有効な日付があるものだけ
   } catch (error) {
-    console.error('Error in getSpecialRates:', error)
+    console.error('getSpecialRates Error:', error)
     return []
   }
 }
 
-// --- 予約管理機能 ---
+// --- 予約管理 ---
 
-export interface Reservation {
-  id: string
-  reservationId: string
+export interface CreateReservationInput {
   guestName: string
   email: string
   checkInDate: string
@@ -153,22 +117,7 @@ export interface Reservation {
   status: 'Confirmed' | 'Cancelled'
 }
 
-export interface CreateReservationInput {
-  guestName: string
-  email: string
-  checkInDate: string
-  checkOutDate: string
-  numberOfNights: number
-  numberOfGuests: number
-  totalAmount: number
-  paymentStatus: 'Pending' | 'Paid' | 'Failed'
-  paymentTransactionId?: string
-  paymentUrl?: string
-  paymentMethod?: string
-  status: 'Confirmed' | 'Cancelled'
-}
-
-export async function createReservation(input: CreateReservationInput): Promise<Reservation> {
+export async function createReservation(input: CreateReservationInput) {
   const token = await getTenantAccessToken()
   const baseId = process.env.LARK_BASE_ID
   const tableId = process.env.LARK_RESERVATIONS_TABLE_ID
@@ -202,47 +151,20 @@ export async function createReservation(input: CreateReservationInput): Promise<
     }
   )
   
-  const data: LarkCreateResponse = await response.json()
+  const data = await response.json()
   if (data.code !== 0) throw new Error(`Create Error: ${data.msg}`)
 
-  return {
-    id: data.data.record.record_id,
-    reservationId,
-    guestName: input.guestName,
-    email: input.email,
-    checkInDate: input.checkInDate,
-    checkOutDate: input.checkOutDate,
-    numberOfNights: input.numberOfNights,
-    numberOfGuests: input.numberOfGuests,
-    totalAmount: input.totalAmount,
-    paymentStatus: input.paymentStatus,
-    paymentTransactionId: input.paymentTransactionId,
-    paymentUrl: input.paymentUrl,
-    paymentMethod: input.paymentMethod,
-    status: input.status,
-  }
+  return { ...input, id: data.data.record.record_id, reservationId }
 }
 
-export async function getReservations(filters?: {
-  checkInFrom?: string
-  checkInTo?: string
-  status?: 'Confirmed' | 'Cancelled'
-}): Promise<Reservation[]> {
+export async function getReservations(filters?: { status?: string }) {
   const token = await getTenantAccessToken()
   const baseId = process.env.LARK_BASE_ID
   const tableId = process.env.LARK_RESERVATIONS_TABLE_ID
   
   let url = `https://open.larksuite.com/open-apis/bitable/v1/apps/${baseId}/tables/${tableId}/records`
-  
-  if (filters) {
-    const conditions = []
-    if (filters.checkInFrom) conditions.push(`CurrentValue.[Check-in Date]>="${filters.checkInFrom}"`)
-    if (filters.checkInTo) conditions.push(`CurrentValue.[Check-in Date]<="${filters.checkInTo}"`)
-    if (filters.status) conditions.push(`CurrentValue.[Status]="${filters.status}"`)
-    
-    if (conditions.length > 0) {
-      url += `?filter=${encodeURIComponent(conditions.join(' && '))}`
-    }
+  if (filters?.status) {
+    url += `?filter=CurrentValue.[Status]="${filters.status}"`
   }
 
   const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
@@ -252,19 +174,15 @@ export async function getReservations(filters?: {
 
   return data.data.items.map((item) => ({
     id: item.record_id,
-    reservationId: item.fields['Reservation ID'] as string,
-    guestName: item.fields['Guest Name'] as string,
-    email: item.fields['Email'] as string,
-    checkInDate: String(item.fields['Check-in Date']), 
-    checkOutDate: String(item.fields['Check-out Date']),
-    numberOfNights: item.fields['Number of Nights'] as number,
-    numberOfGuests: item.fields['Number of Guests'] as number,
-    totalAmount: item.fields['Total Amount'] as number,
-    paymentStatus: item.fields['Payment Status'] as string,
-    paymentTransactionId: item.fields['Payment Transaction ID'] as string,
-    paymentUrl: (item.fields['Payment URL'] as any)?.link || (item.fields['Payment URL'] as string),
-    paymentMethod: item.fields['Payment Method'] as string,
-    status: item.fields['Status'] as 'Confirmed' | 'Cancelled',
+    reservationId: String(item.fields['Reservation ID'] || ''),
+    guestName: String(item.fields['Guest Name'] || ''),
+    checkInDate: typeof item.fields['Check-in Date'] === 'number' 
+      ? new Date(item.fields['Check-in Date']).toISOString().split('T')[0] 
+      : String(item.fields['Check-in Date']),
+    checkOutDate: typeof item.fields['Check-out Date'] === 'number'
+      ? new Date(item.fields['Check-out Date']).toISOString().split('T')[0]
+      : String(item.fields['Check-out Date']),
+    status: item.fields['Status'] as string,
   }))
 }
 
@@ -273,12 +191,8 @@ export async function getBookedDatesInRange(start: string, end: string) {
   const bookedSet = new Set<string>()
   
   reservations.forEach((res) => {
-    const checkInVal = res.checkInDate
-    const checkOutVal = res.checkOutDate
-    
-    const s = !isNaN(Number(checkInVal)) ? new Date(Number(checkInVal)) : new Date(checkInVal)
-    const e = !isNaN(Number(checkOutVal)) ? new Date(Number(checkOutVal)) : new Date(checkOutVal)
-
+    const s = new Date(res.checkInDate)
+    const e = new Date(res.checkOutDate)
     for (let d = new Date(s); d < e; d.setDate(d.getDate() + 1)) {
       bookedSet.add(d.toISOString().split('T')[0])
     }
@@ -287,25 +201,9 @@ export async function getBookedDatesInRange(start: string, end: string) {
   const dates = []
   const sDate = new Date(start)
   const eDate = new Date(end)
-  for (let d = sDate; d <= eDate; d.setDate(d.getDate() + 1)) {
+  for (let d = new Date(sDate); d <= eDate; d.setDate(d.getDate() + 1)) {
     const dateStr = d.toISOString().split('T')[0]
     dates.push({ date: dateStr, isBooked: bookedSet.has(dateStr) })
   }
   return dates
-}
-
-export async function getBookedDates() {
-  const today = new Date().toISOString().split('T')[0]
-  const datesObj = await getBookedDatesInRange(today, '2030-12-31') // 簡易的に未来まで取得
-  return datesObj.filter(d => d.isBooked).map(d => d.date)
-}
-
-export async function getRooms() {
-  return [{
-    id: 'default-room',
-    name: 'Luxury Ocean Villa',
-    capacity: 6,
-    basePrice: 25000,
-    images: ['/placeholder.jpg', '/placeholder-user.jpg']
-  }]
 }
