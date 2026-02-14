@@ -11,7 +11,6 @@ export async function GET() {
     const rates = await getSpecialRates()
     return NextResponse.json({ rates })
   } catch (error) {
-    console.error('Rates Fetch Error:', error)
     return NextResponse.json({ rates: [] })
   }
 }
