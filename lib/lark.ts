@@ -1,24 +1,20 @@
 // 【ファイル概要】
-// Lark Base との通信を行う主要ファイルです。
-// 予約データの取得、作成、更新や、アクセストークンの管理を行います。
-// Squareへの依存を排除し、AirPAY等の汎用的な決済記録に対応しています。
+// Lark Base (多維表格) との通信を行う主要ファイルです。
+// 予約データの取得、作成、更新に加え、「特別料金テーブル（Special Rates）」の取得を行います。
+
 
 // Environment variables required:
 // - LARK_APP_ID
 // - LARK_APP_SECRET
 // - LARK_BASE_ID
 // - LARK_RESERVATIONS_TABLE_ID
+// - LARK_SPECIAL_RATES_TABLE_ID
 
 interface LarkTokenResponse {
   code: number
   msg: string
   tenant_access_token: string
   expire: number
-}
-
-interface LarkRecord {
-  record_id: string
-  fields: Record<string, unknown>
 }
 
 interface LarkListResponse {
@@ -40,19 +36,22 @@ interface LarkCreateResponse {
   }
 }
 
+interface LarkRecord {
+  record_id: string
+  fields: Record<string, unknown>
+}
+
 let cachedToken: { token: string; expiresAt: number } | null = null
 
+// トークン取得処理
 async function getTenantAccessToken(): Promise<string> {
-  // Check if we have a valid cached token
   if (cachedToken && Date.now() < cachedToken.expiresAt) {
     return cachedToken.token
   }
 
   const response = await fetch('https://open.larksuite.com/open-apis/auth/v3/tenant_access_token/internal', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       app_id: process.env.LARK_APP_ID,
       app_secret: process.env.LARK_APP_SECRET,
@@ -60,27 +59,87 @@ async function getTenantAccessToken(): Promise<string> {
   })
 
   const data: LarkTokenResponse = await response.json()
-
   if (data.code !== 0) {
+    console.error('Lark Token Error:', data)
     throw new Error(`Failed to get Lark access token: ${data.msg}`)
   }
 
-  // Cache the token with some buffer time (subtract 5 minutes)
   cachedToken = {
     token: data.tenant_access_token,
     expiresAt: Date.now() + (data.expire - 300) * 1000,
   }
-
   return data.tenant_access_token
 }
 
-export interface Room {
+// --- 特別料金 (Special Rates) の取得 ---
+
+export interface SpecialRate {
   id: string
   name: string
-  capacity: number
-  basePrice: number
-  images: string[]
+  startDate: string
+  endDate: string
+  pricePerNight: number
+  priority: number
 }
+
+export async function getSpecialRates(): Promise<SpecialRate[]> {
+  const token = await getTenantAccessToken()
+  const baseId = process.env.LARK_BASE_ID
+  const tableId = process.env.LARK_SPECIAL_RATES_TABLE_ID
+
+  // 特別料金テーブルが未設定の場合は空配列を返してエラーを防ぐ
+  if (!tableId) return []
+
+  // 今日以降のデータを取得するためのフィルタリング準備
+  const today = new Date().toISOString().split('T')[0]
+  const url = `https://open.larksuite.com/open-apis/bitable/v1/apps/${baseId}/tables/${tableId}/records`
+
+  try {
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      next: { revalidate: 60 } // 1分ごとにキャッシュ更新
+    })
+
+    const data: LarkListResponse = await response.json()
+    
+    if (data.code !== 0) {
+      console.warn(`Failed to fetch special rates: ${data.msg}`)
+      return []
+    }
+
+    // データ変換とフィルタリング
+    return data.data.items
+      .map((item) => {
+        // フィールド値の型安全な取り出し
+        const endVal = item.fields['End Date']
+        const startVal = item.fields['Start Date']
+        
+        const endDateStr = typeof endVal === 'number' 
+          ? new Date(endVal).toISOString().split('T')[0] 
+          : String(endVal || '')
+
+        const startDateStr = typeof startVal === 'number' 
+          ? new Date(startVal).toISOString().split('T')[0] 
+          : String(startVal || '')
+
+        return {
+          id: item.record_id,
+          name: (item.fields['Name'] as string) || '',
+          startDate: startDateStr,
+          endDate: endDateStr,
+          pricePerNight: Number(item.fields['Price per Night']) || 0,
+          priority: Number(item.fields['Priority']) || 0,
+        }
+      })
+      // 過去の特別料金を除外（endDateが今日より前のものは除外）
+      .filter(rate => rate.endDate >= today)
+  } catch (error) {
+    console.error('Error in getSpecialRates:', error)
+    return []
+  }
+}
+
+// --- 予約管理機能 ---
 
 export interface Reservation {
   id: string
@@ -92,91 +151,11 @@ export interface Reservation {
   numberOfNights: number
   numberOfGuests: number
   totalAmount: number
-  paymentStatus: 'Pending' | 'Paid' | 'Failed'
-  // Changed from squareTransactionId to generic paymentTransactionId
+  paymentStatus: string
   paymentTransactionId?: string
-  paymentUrl?: string // Added for AirPAY payment link
-  paymentMethod?: string // Added for tracking payment method
+  paymentUrl?: string
+  paymentMethod?: string
   status: 'Confirmed' | 'Cancelled'
-}
-
-// SIMPLIFIED: Returns static room data instead of fetching from Lark.
-// Only the Reservations table is needed in Lark now.
-export async function getRooms(): Promise<Room[]> {
-  // You can edit your property details directly here
-  return [
-    {
-      id: 'default-room',
-      name: 'Luxury Ocean Villa', // Set your property name
-      capacity: 6,                // Max guests
-      basePrice: 25000,           // Price per night (JPY)
-      images: [
-        '/placeholder.jpg',       // Ensure these images exist in your public folder
-        '/placeholder-user.jpg'   // or use external URLs
-      ]
-    }
-  ]
-}
-
-export async function getReservations(filters?: {
-  checkInFrom?: string
-  checkInTo?: string
-  status?: 'Confirmed' | 'Cancelled'
-}): Promise<Reservation[]> {
-  const token = await getTenantAccessToken()
-  const baseId = process.env.LARK_BASE_ID
-  const tableId = process.env.LARK_RESERVATIONS_TABLE_ID
-
-  let url = `https://open.larksuite.com/open-apis/bitable/v1/apps/${baseId}/tables/${tableId}/records`
-
-  // Build filter string if provided
-  if (filters) {
-    const filterConditions: string[] = []
-
-    if (filters.checkInFrom) {
-      filterConditions.push(`CurrentValue.[Check-in Date]>="${filters.checkInFrom}"`)
-    }
-    if (filters.checkInTo) {
-      filterConditions.push(`CurrentValue.[Check-in Date]<="${filters.checkInTo}"`)
-    }
-    if (filters.status) {
-      filterConditions.push(`CurrentValue.[Status]="${filters.status}"`)
-    }
-
-    if (filterConditions.length > 0) {
-      url += `?filter=${encodeURIComponent(filterConditions.join(' && '))}`
-    }
-  }
-
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  })
-
-  const data: LarkListResponse = await response.json()
-
-  if (data.code !== 0) {
-    throw new Error(`Failed to fetch reservations: ${data.msg}`)
-  }
-
-  return data.data.items.map((item) => ({
-    id: item.record_id,
-    reservationId: item.fields['Reservation ID'] as string,
-    guestName: item.fields['Guest Name'] as string,
-    email: item.fields['Email'] as string,
-    checkInDate: String(item.fields['Check-in Date']),
-    checkOutDate: String(item.fields['Check-out Date']),
-    numberOfNights: item.fields['Number of Nights'] as number,
-    numberOfGuests: item.fields['Number of Guests'] as number,
-    totalAmount: item.fields['Total Amount'] as number,
-    paymentStatus: item.fields['Payment Status'] as 'Pending' | 'Paid' | 'Failed',
-    // Updated field mapping
-    paymentTransactionId: item.fields['Payment Transaction ID'] as string | undefined,
-    paymentUrl: (item.fields['Payment URL'] as { link: string })?.link || (item.fields['Payment URL'] as string) || undefined,
-    paymentMethod: item.fields['Payment Method'] as string | undefined,
-    status: item.fields['Status'] as 'Confirmed' | 'Cancelled',
-  }))
 }
 
 export interface CreateReservationInput {
@@ -188,7 +167,6 @@ export interface CreateReservationInput {
   numberOfGuests: number
   totalAmount: number
   paymentStatus: 'Pending' | 'Paid' | 'Failed'
-  // Changed to generic payment fields
   paymentTransactionId?: string
   paymentUrl?: string
   paymentMethod?: string
@@ -199,10 +177,9 @@ export async function createReservation(input: CreateReservationInput): Promise<
   const token = await getTenantAccessToken()
   const baseId = process.env.LARK_BASE_ID
   const tableId = process.env.LARK_RESERVATIONS_TABLE_ID
+  const reservationId = `RES-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
 
-  // Generate a unique reservation ID
-  const reservationId = `RES-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
-
+  // Larkへの保存
   const response = await fetch(
     `https://open.larksuite.com/open-apis/bitable/v1/apps/${baseId}/tables/${tableId}/records`,
     {
@@ -222,7 +199,6 @@ export async function createReservation(input: CreateReservationInput): Promise<
           'Number of Guests': input.numberOfGuests,
           'Total Amount': input.totalAmount,
           'Payment Status': input.paymentStatus,
-          // Updated field names to match new schema
           'Payment Transaction ID': input.paymentTransactionId || '',
           'Payment URL': input.paymentUrl ? { link: input.paymentUrl, text: input.paymentUrl } : null,
           'Payment Method': input.paymentMethod || 'AirPAY',
@@ -231,12 +207,9 @@ export async function createReservation(input: CreateReservationInput): Promise<
       }),
     }
   )
-
+  
   const data: LarkCreateResponse = await response.json()
-
-  if (data.code !== 0) {
-    throw new Error(`Failed to create reservation: ${data.msg}`)
-  }
+  if (data.code !== 0) throw new Error(`Create Error: ${data.msg}`)
 
   return {
     id: data.data.record.record_id,
@@ -256,107 +229,83 @@ export async function createReservation(input: CreateReservationInput): Promise<
   }
 }
 
-export async function updateReservation(
-  recordId: string,
-  updates: Partial<CreateReservationInput>
-): Promise<void> {
+export async function getReservations(filters?: {
+  checkInFrom?: string
+  checkInTo?: string
+  status?: 'Confirmed' | 'Cancelled'
+}): Promise<Reservation[]> {
   const token = await getTenantAccessToken()
   const baseId = process.env.LARK_BASE_ID
   const tableId = process.env.LARK_RESERVATIONS_TABLE_ID
-
-  const fields: Record<string, unknown> = {}
-
-  if (updates.guestName !== undefined) fields['Guest Name'] = updates.guestName
-  if (updates.email !== undefined) fields['Email'] = updates.email
-  if (updates.checkInDate !== undefined) fields['Check-in Date'] = new Date(updates.checkInDate).getTime()
-  if (updates.checkOutDate !== undefined) fields['Check-out Date'] = new Date(updates.checkOutDate).getTime()
-  if (updates.numberOfNights !== undefined) fields['Number of Nights'] = updates.numberOfNights
-  if (updates.numberOfGuests !== undefined) fields['Number of Guests'] = updates.numberOfGuests
-  if (updates.totalAmount !== undefined) fields['Total Amount'] = updates.totalAmount
-  if (updates.paymentStatus !== undefined) fields['Payment Status'] = updates.paymentStatus
   
-  // Updated field mappings
-  if (updates.paymentTransactionId !== undefined) fields['Payment Transaction ID'] = updates.paymentTransactionId
-  if (updates.paymentUrl !== undefined) fields['Payment URL'] = { link: updates.paymentUrl, text: updates.paymentUrl }
-  if (updates.paymentMethod !== undefined) fields['Payment Method'] = updates.paymentMethod
+  let url = `https://open.larksuite.com/open-apis/bitable/v1/apps/${baseId}/tables/${tableId}/records`
   
-  if (updates.status !== undefined) fields['Status'] = updates.status
-
-  const response = await fetch(
-    `https://open.larksuite.com/open-apis/bitable/v1/apps/${baseId}/tables/${tableId}/records/${recordId}`,
-    {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ fields }),
+  if (filters) {
+    const conditions = []
+    if (filters.checkInFrom) conditions.push(`CurrentValue.[Check-in Date]>="${filters.checkInFrom}"`)
+    if (filters.checkInTo) conditions.push(`CurrentValue.[Check-in Date]<="${filters.checkInTo}"`)
+    if (filters.status) conditions.push(`CurrentValue.[Status]="${filters.status}"`)
+    
+    if (conditions.length > 0) {
+      url += `?filter=${encodeURIComponent(conditions.join(' && '))}`
     }
-  )
-
-  const data = await response.json()
-
-  if (data.code !== 0) {
-    throw new Error(`Failed to update reservation: ${data.msg}`)
   }
+
+  const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+  const data: LarkListResponse = await response.json()
+  
+  if (data.code !== 0 || !data.data?.items) return []
+
+  return data.data.items.map((item) => ({
+    id: item.record_id,
+    reservationId: item.fields['Reservation ID'] as string,
+    guestName: item.fields['Guest Name'] as string,
+    email: item.fields['Email'] as string,
+    checkInDate: String(item.fields['Check-in Date']), 
+    checkOutDate: String(item.fields['Check-out Date']),
+    numberOfNights: item.fields['Number of Nights'] as number,
+    numberOfGuests: item.fields['Number of Guests'] as number,
+    totalAmount: item.fields['Total Amount'] as number,
+    paymentStatus: item.fields['Payment Status'] as string,
+    paymentTransactionId: item.fields['Payment Transaction ID'] as string,
+    paymentUrl: (item.fields['Payment URL'] as any)?.link || (item.fields['Payment URL'] as string),
+    paymentMethod: item.fields['Payment Method'] as string,
+    status: item.fields['Status'] as 'Confirmed' | 'Cancelled',
+  }))
 }
 
-// Get booked dates in a specific range for admin/calendar view (returns objects)
-export async function getBookedDatesInRange(
-  startDate: string,
-  endDate: string
-): Promise<{ date: string; isBooked: boolean }[]> {
-  const reservations = await getReservations({
-    checkInFrom: startDate,
-    checkInTo: endDate,
-    status: 'Confirmed',
-  })
+export async function getBookedDatesInRange(start: string, end: string) {
+  const reservations = await getReservations({ status: 'Confirmed' })
+  const bookedSet = new Set<string>()
+  
+  reservations.forEach((res) => {
+    const checkInVal = res.checkInDate
+    const checkOutVal = res.checkOutDate
+    
+    const s = !isNaN(Number(checkInVal)) ? new Date(Number(checkInVal)) : new Date(checkInVal)
+    const e = !isNaN(Number(checkOutVal)) ? new Date(Number(checkOutVal)) : new Date(checkOutVal)
 
-  const bookedDates = new Set<string>()
-
-  reservations.forEach((reservation) => {
-    // Lark returns timestamps or strings. Safely parse.
-    const checkIn = new Date(Number(reservation.checkInDate) || reservation.checkInDate)
-    const checkOut = new Date(Number(reservation.checkOutDate) || reservation.checkOutDate)
-
-    for (let d = new Date(checkIn); d < checkOut; d.setDate(d.getDate() + 1)) {
-      bookedDates.add(d.toISOString().split('T')[0])
+    for (let d = new Date(s); d < e; d.setDate(d.getDate() + 1)) {
+      bookedSet.add(d.toISOString().split('T')[0])
     }
   })
 
-  const result: { date: string; isBooked: boolean }[] = []
-  const start = new Date(startDate)
-  const end = new Date(endDate)
-
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+  const dates = []
+  const sDate = new Date(start)
+  const eDate = new Date(end)
+  for (let d = sDate; d <= eDate; d.setDate(d.getDate() + 1)) {
     const dateStr = d.toISOString().split('T')[0]
-    result.push({
-      date: dateStr,
-      isBooked: bookedDates.has(dateStr),
-    })
+    dates.push({ date: dateStr, isBooked: bookedSet.has(dateStr) })
   }
-
-  return result
+  return dates
 }
 
-// Get ALL future booked dates (returns strings)
-export async function getBookedDates(): Promise<string[]> {
-  const today = new Date().toISOString().split('T')[0]
-  const reservations = await getReservations({
-    checkInFrom: today,
-    status: 'Confirmed',
-  })
-
-  const bookedDates = new Set<string>()
-
-  reservations.forEach((reservation) => {
-    const checkIn = new Date(Number(reservation.checkInDate) || reservation.checkInDate)
-    const checkOut = new Date(Number(reservation.checkOutDate) || reservation.checkOutDate)
-
-    for (let d = new Date(checkIn); d < checkOut; d.setDate(d.getDate() + 1)) {
-      bookedDates.add(d.toISOString().split('T')[0])
-    }
-  })
-
-  return Array.from(bookedDates)
+export async function getRooms() {
+  return [{
+    id: 'default-room',
+    name: 'Luxury Ocean Villa',
+    capacity: 6,
+    basePrice: 25000,
+    images: ['/placeholder.jpg', '/placeholder-user.jpg']
+  }]
 }
