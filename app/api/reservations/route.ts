@@ -52,10 +52,9 @@ export async function POST(request: NextRequest) {
       checkOutDate,
       numberOfGuests,
       paymentStatus = 'Pending',
-      // Changed: Receive generic payment info instead of Square ID
       paymentTransactionId,
       paymentUrl,
-      paymentMethod = 'AirPAY', // Default to AirPAY as requested
+      paymentMethod = 'AirPAY',
     } = body
 
     // Validate required fields
@@ -78,8 +77,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Calculate pricing
-    const pricing = calculatePrice(validation.nights, numberOfGuests)
+    // Calculate pricing with new logic
+    // Note: numberOfGuests ensures it's treated as a number
+    const pricing = calculatePrice(validation.nights, Number(numberOfGuests))
 
     // Create reservation in Lark
     const reservation = await createReservation({
@@ -88,14 +88,12 @@ export async function POST(request: NextRequest) {
       checkInDate,
       checkOutDate,
       numberOfNights: validation.nights,
-      numberOfGuests,
-      totalAmount: pricing.totalAmount,
+      numberOfGuests: Number(numberOfGuests),
+      totalAmount: pricing.totalAmount, // New pricing logic property
       paymentStatus,
-      // Map new fields
       paymentTransactionId,
       paymentUrl,
       paymentMethod,
-      // If payment is pending (AirPAY link to be sent), we still confirm the booking slot
       status: 'Confirmed', 
     })
 
