@@ -1,3 +1,7 @@
+// 【ファイル概要】
+// 宿泊料金計算のビジネスロジックを担当するユーティリティファイルです。
+// 基本料金の設定、泊数や人数に応じた合計金額の計算処理などが定義されています。
+
 // Pricing Logic
 // Base rate (for 1 room, up to 2 guests) varies by consecutive nights:
 // - 1 night: ¥18,000/night
