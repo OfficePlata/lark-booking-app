@@ -1,3 +1,7 @@
+// 【ファイル概要】
+// 予約制限に関するビジネスロジックを定義するファイルです。
+// 「最低3泊から」といった宿泊日数の制限や、予約可能な期間の判定ロジックを提供します。
+
 // Booking Restrictions Logic
 // Priority booking: 3+ night stays have priority
 // Before the 20th of the previous month, only 3+ night stays are allowed
