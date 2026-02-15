@@ -1,6 +1,7 @@
 // 【ファイル概要】
 // Lark Base (多維表格) との通信を行う主要ファイルです。
-// 予約データの取得・作成、特別料金の取得を行います。
+// 予約データの取得、特別料金の取得を行います。
+// 注意: createReservation()は削除されました。予約作成はLark自動化のWebhook経由で行います。
 
 interface LarkTokenResponse {
   code: number
@@ -36,7 +37,7 @@ async function getTenantAccessToken(): Promise<string> {
     body: JSON.stringify({
       app_id: process.env.LARK_APP_ID,
       app_secret: process.env.LARK_APP_SECRET,
-    } ),
+    }),
   })
 
   const data: LarkTokenResponse = await response.json()
@@ -72,7 +73,7 @@ export async function getSpecialRates(): Promise<SpecialRate[]> {
     const response = await fetch(url, {
       headers: { Authorization: `Bearer ${token}` },
       next: { revalidate: 60 }
-    } )
+    })
 
     const data: LarkListResponse = await response.json()
     if (data.code !== 0) return []
@@ -101,68 +102,13 @@ export async function getSpecialRates(): Promise<SpecialRate[]> {
 
 // --- 予約管理 ---
 
-export interface CreateReservationInput {
-  guestName: string
-  email: string
-  checkInDate: string
-  checkOutDate: string
-  numberOfNights: number
-  numberOfGuests: number
-  totalAmount: number
-  paymentStatus: string
-  paymentTransactionId?: string
-  paymentUrl?: string
-  paymentMethod?: string
-  status: 'Confirmed' | 'Cancelled'
-}
-
-export async function createReservation(input: CreateReservationInput) {
-  const token = await getTenantAccessToken()
-  const baseId = process.env.LARK_BASE_ID
-  const tableId = process.env.LARK_RESERVATIONS_TABLE_ID
-  const reservationId = `RES-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
-
-  const response = await fetch(
-    `https://open.larksuite.com/open-apis/bitable/v1/apps/${baseId}/tables/${tableId}/records`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        fields: {
-          reservationId: reservationId,
-          guestName: input.guestName,
-          email: input.email,
-          checkInDate: input.checkInDate,
-          checkOutDate: input.checkOutDate,
-          numberOfNights: input.numberOfNights,
-          numberOfGuests: input.numberOfGuests,
-          totalAmount: input.totalAmount,
-          paymentStatus: input.paymentStatus,
-          ...(input.paymentTransactionId && { paymentTransactionId: input.paymentTransactionId } ),
-          ...(input.paymentUrl && { paymentUrl: input.paymentUrl }),
-          paymentMethod: input.paymentMethod || 'AirPAY',
-          status: input.status,
-        },
-      }),
-    }
-  )
-  
-  const data = await response.json()
-  if (data.code !== 0) throw new Error(`Create Error: ${data.msg}`)
-
-  return { ...input, id: data.data.record.record_id, reservationId }
-}
-
 export async function getReservations(filters?: { status?: string }) {
   const token = await getTenantAccessToken()
   const baseId = process.env.LARK_BASE_ID
   const tableId = process.env.LARK_RESERVATIONS_TABLE_ID
   
   let url = `https://open.larksuite.com/open-apis/bitable/v1/apps/${baseId}/tables/${tableId}/records`
-  if (filters?.status ) {
+  if (filters?.status) {
     url += `?filter=CurrentValue.[Status]="${filters.status}"`
   }
 

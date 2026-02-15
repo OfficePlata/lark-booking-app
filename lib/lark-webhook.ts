@@ -1,5 +1,6 @@
 /**
  * Lark Webhook通知機能
+ * 予約データをLark自動化のWebhookに送信します。
  */
 
 interface ReservationData {
@@ -18,6 +19,7 @@ interface ReservationData {
 
 /**
  * Larkに予約通知を送信
+ * シンプルなJSON形式でデータを送信し、Lark自動化がレコードを作成します。
  */
 export async function sendLarkNotification(
   webhookUrl: string,
@@ -55,91 +57,5 @@ export async function sendLarkNotification(
   } catch (error) {
     console.error('Failed to send Lark notification:', error)
     throw error
-  }
-}
-
-/**
- * Larkにエラー通知を送信
- */
-export async function sendLarkErrorNotification(
-  webhookUrl: string,
-  errorMessage: string,
-  errorDetails?: string
-): Promise<void> {
-  try {
-    const timestamp = new Date().toLocaleString('ja-JP', {
-      timeZone: 'Asia/Tokyo',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    })
-
-    const message = {
-      msg_type: 'interactive',
-      card: {
-        header: {
-          title: {
-            content: '⚠️ エラー発生',
-            tag: 'plain_text',
-          },
-          template: 'red',
-        },
-        elements: [
-          {
-            tag: 'div',
-            text: {
-              content: `**エラー内容**\n${errorMessage}`,
-              tag: 'lark_md',
-            },
-          },
-          ...(errorDetails
-            ? [
-                {
-                  tag: 'hr' as const,
-                },
-                {
-                  tag: 'div' as const,
-                  text: {
-                    content: `**詳細**\n${errorDetails}`,
-                    tag: 'lark_md' as const,
-                  },
-                },
-              ]
-            : []),
-          {
-            tag: 'hr',
-          },
-          {
-            tag: 'note',
-            elements: [
-              {
-                tag: 'plain_text',
-                content: `発生日時: ${timestamp}`,
-              },
-            ],
-          },
-        ],
-      },
-    }
-
-    const response = await fetch(webhookUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(message),
-    })
-
-    if (!response.ok) {
-      throw new Error(`Lark error webhook failed: ${response.status} ${response.statusText}`)
-    }
-
-    console.log('Lark error notification sent successfully')
-  } catch (error) {
-    console.error('Failed to send Lark error notification:', error)
-    // エラー通知の失敗は致命的ではないため、エラーをスローしない
   }
 }
