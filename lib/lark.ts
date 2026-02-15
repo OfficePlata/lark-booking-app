@@ -131,21 +131,24 @@ export async function createReservation(input: CreateReservationInput) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        fields: {
-          'Reservation ID': reservationId,
-          'Guest Name': input.guestName,
-          'Email': input.email,
-          'Check-in Date': input.checkInDate,
-          'Check-out Date': input.checkOutDate,
-          'Number of Nights': input.numberOfNights,
-          'Number of Guests': input.numberOfGuests,
-          'Total Amount': input.totalAmount,
-          'Payment Status': input.paymentStatus,
-          ...(input.paymentTransactionId && { 'Payment Transaction ID': input.paymentTransactionId }),
-          ...(input.paymentUrl && { 'Payment URL': input.paymentUrl }),
-          'Payment Method': input.paymentMethod || 'AirPAY',
-          'Status': input.status,
-        },
+        body: JSON.stringify({
+  fields: {
+    'reservationId': reservationId,
+    'guestName': input.guestName,
+    'email': input.email,
+    'checkInDate': input.checkInDate,
+    'checkOutDate': input.checkOutDate,
+    'numberOfNights': input.numberOfNights,
+    'numberOfGuests': input.numberOfGuests,
+    'totalAmount': input.totalAmount,
+    'paymentStatus': input.paymentStatus,
+    ...(input.paymentTransactionId && { 'paymentTransactionId': input.paymentTransactionId }),
+    ...(input.paymentUrl && { 'paymentUrl': input.paymentUrl }),
+    'paymentMethod': input.paymentMethod || 'AirPAY',
+    'status': input.status,
+  },
+}),
+
       }),
     }
   )
