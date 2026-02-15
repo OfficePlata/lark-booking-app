@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createReservation, getReservations, getBookedDatesInRange, getSpecialRates } from '@/lib/lark'
 import { calculatePrice } from '@/lib/booking/pricing'
 import { validateBookingNights } from '@/lib/booking/restrictions'
+import { sendLarkNotification, sendLarkErrorNotification } from '@/lib/lark-webhook'
 
 export const runtime = 'edge';
 
@@ -72,9 +73,44 @@ export async function POST(request: NextRequest) {
       status: 'Confirmed', 
     })
 
+    // Lark Webhookに通知を送信
+    try {
+      await sendLarkNotification({
+        guestName,
+        email,
+        checkInDate,
+        checkOutDate,
+        numberOfNights: pricing.numberOfNights,
+        numberOfGuests: Number(numberOfGuests),
+        totalAmount: pricing.totalAmount,
+        paymentStatus,
+        paymentMethod,
+      })
+    } catch (notificationError) {
+      // 通知の失敗はログに記録するが、予約処理は継続
+      console.error('Failed to send Lark notification:', notificationError)
+      await sendLarkErrorNotification({
+        title: 'Webhook通知エラー',
+        message: '予約通知の送信に失敗しました',
+        details: notificationError instanceof Error ? notificationError.message : String(notificationError),
+      })
+    }
+
     return NextResponse.json({ reservation, pricing })
   } catch (error) {
     console.error(error)
+    
+    // エラー通知をLarkに送信
+    try {
+      await sendLarkErrorNotification({
+        title: '予約作成エラー',
+        message: '予約の作成処理中にエラーが発生しました',
+        details: error instanceof Error ? error.message : String(error),
+      })
+    } catch (notificationError) {
+      console.error('Failed to send error notification:', notificationError)
+    }
+    
     return NextResponse.json({ error: 'Failed to create reservation' }, { status: 500 })
   }
 }
