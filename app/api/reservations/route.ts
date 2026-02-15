@@ -95,22 +95,10 @@ export async function POST(request: NextRequest) {
           status: 'Confirmed',
         })
         console.log('[Reservation API] Lark webhook notification sent successfully')
-      } catch (notificationError) {
+            } catch (notificationError) {
         // 通知の失敗はログに記録し、エラーを返す
         console.error('[Reservation API] Failed to send Lark notification:', notificationError)
-        
-        try {
-          await sendLarkErrorNotification(
-            webhookUrl,
-            'Webhook通知エラー: 予約通知の送信に失敗しました',
-            notificationError instanceof Error ? notificationError.message : String(notificationError)
-          )
-        } catch (errorNotificationError) {
-          console.error('[Reservation API] Failed to send error notification:', errorNotificationError)
-        }
-        
         return NextResponse.json({ error: 'Failed to send reservation to Lark' }, { status: 500 })
-      }
     } else {
       console.error('[Reservation API] LARK_WEBHOOK_URL is not set')
       return NextResponse.json({ error: 'Lark webhook not configured' }, { status: 500 })
