@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getReservations, getBookedDatesInRange, getSpecialRates } from '@/lib/lark'
 import { calculatePrice } from '@/lib/booking/pricing'
 import { validateBookingNights } from '@/lib/booking/restrictions'
-import { sendLarkNotification, sendLarkErrorNotification } from '@/lib/lark-webhook'
+import { sendLarkNotification } from '@/lib/lark-webhook'
 
 export const runtime = 'edge';
 
@@ -95,10 +95,10 @@ export async function POST(request: NextRequest) {
           status: 'Confirmed',
         })
         console.log('[Reservation API] Lark webhook notification sent successfully')
-            } catch (notificationError) {
-        // 通知の失敗はログに記録し、エラーを返す
+      } catch (notificationError) {
         console.error('[Reservation API] Failed to send Lark notification:', notificationError)
         return NextResponse.json({ error: 'Failed to send reservation to Lark' }, { status: 500 })
+      }
     } else {
       console.error('[Reservation API] LARK_WEBHOOK_URL is not set')
       return NextResponse.json({ error: 'Lark webhook not configured' }, { status: 500 })
@@ -122,9 +122,8 @@ export async function POST(request: NextRequest) {
       }, 
       pricing 
     })
-    } catch (error) {
+  } catch (error) {
     console.error('[Reservation API] Error:', error)
     return NextResponse.json({ error: 'Failed to create reservation' }, { status: 500 })
   }
-
 }
