@@ -3,6 +3,7 @@
  */
 
 interface ReservationData {
+  reservationId: string
   guestName: string
   email: string
   checkInDate: string
@@ -12,6 +13,7 @@ interface ReservationData {
   totalAmount: number
   paymentStatus: string
   paymentMethod: string
+  status: string
 }
 
 /**
@@ -22,68 +24,19 @@ export async function sendLarkNotification(
   reservation: ReservationData
 ): Promise<void> {
   try {
-    const timestamp = new Date().toLocaleString('ja-JP', {
-      timeZone: 'Asia/Tokyo',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    })
-
-    const message = {
-      msg_type: 'interactive',
-      card: {
-        header: {
-          title: {
-            content: '🎉 新規予約リクエスト',
-            tag: 'plain_text',
-          },
-          template: 'green',
-        },
-        elements: [
-          {
-            tag: 'div',
-            text: {
-              content: `**お客様情報**\n👤 お名前: ${reservation.guestName}\n📧 メール: ${reservation.email}`,
-              tag: 'lark_md',
-            },
-          },
-          {
-            tag: 'hr',
-          },
-          {
-            tag: 'div',
-            text: {
-              content: `**宿泊情報**\n📅 チェックイン: ${reservation.checkInDate}\n📅 チェックアウト: ${reservation.checkOutDate}\n🌙 宿泊数: ${reservation.numberOfNights}泊\n👥 人数: ${reservation.numberOfGuests}名`,
-              tag: 'lark_md',
-            },
-          },
-          {
-            tag: 'hr',
-          },
-          {
-            tag: 'div',
-            text: {
-              content: `**料金情報**\n💰 合計金額: ¥${reservation.totalAmount.toLocaleString()}\n💳 決済方法: ${reservation.paymentMethod}\n📊 決済状況: ${reservation.paymentStatus}`,
-              tag: 'lark_md',
-            },
-          },
-          {
-            tag: 'hr',
-          },
-          {
-            tag: 'note',
-            elements: [
-              {
-                tag: 'plain_text',
-                content: `受付日時: ${timestamp}`,
-              },
-            ],
-          },
-        ],
-      },
+    // Lark自動化のWebhookに送信するデータ
+    const webhookData = {
+      reservationId: reservation.reservationId,
+      guestName: reservation.guestName,
+      email: reservation.email,
+      checkInDate: reservation.checkInDate,
+      checkOutDate: reservation.checkOutDate,
+      numberOfNights: reservation.numberOfNights,
+      numberOfGuests: reservation.numberOfGuests,
+      totalAmount: reservation.totalAmount,
+      paymentStatus: reservation.paymentStatus,
+      paymentMethod: reservation.paymentMethod,
+      status: reservation.status,
     }
 
     const response = await fetch(webhookUrl, {
@@ -91,7 +44,7 @@ export async function sendLarkNotification(
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(message),
+      body: JSON.stringify(webhookData),
     })
 
     if (!response.ok) {
@@ -104,6 +57,7 @@ export async function sendLarkNotification(
     throw error
   }
 }
+
 /**
  * Larkにエラー通知を送信
  */
