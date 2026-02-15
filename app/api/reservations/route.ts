@@ -122,23 +122,9 @@ export async function POST(request: NextRequest) {
       }, 
       pricing 
     })
-  } catch (error) {
+    } catch (error) {
     console.error('[Reservation API] Error:', error)
-    
-    // エラー通知をLarkに送信
-    const webhookUrl = process.env.LARK_WEBHOOK_URL
-    if (webhookUrl) {
-      try {
-        await sendLarkErrorNotification(
-          webhookUrl,
-          '予約作成エラー: 予約の作成処理中にエラーが発生しました',
-          error instanceof Error ? error.message : String(error)
-        )
-      } catch (notificationError) {
-        console.error('[Reservation API] Failed to send error notification:', notificationError)
-      }
-    }
-    
     return NextResponse.json({ error: 'Failed to create reservation' }, { status: 500 })
   }
+
 }
