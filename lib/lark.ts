@@ -36,7 +36,7 @@ async function getTenantAccessToken(): Promise<string> {
     body: JSON.stringify({
       app_id: process.env.LARK_APP_ID,
       app_secret: process.env.LARK_APP_SECRET,
-    }),
+    } ),
   })
 
   const data: LarkTokenResponse = await response.json()
@@ -72,7 +72,7 @@ export async function getSpecialRates(): Promise<SpecialRate[]> {
     const response = await fetch(url, {
       headers: { Authorization: `Bearer ${token}` },
       next: { revalidate: 60 }
-    })
+    } )
 
     const data: LarkListResponse = await response.json()
     if (data.code !== 0) return []
@@ -131,24 +131,21 @@ export async function createReservation(input: CreateReservationInput) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        body: JSON.stringify({
-  fields: {
-    'reservationId': reservationId,
-    'guestName': input.guestName,
-    'email': input.email,
-    'checkInDate': input.checkInDate,
-    'checkOutDate': input.checkOutDate,
-    'numberOfNights': input.numberOfNights,
-    'numberOfGuests': input.numberOfGuests,
-    'totalAmount': input.totalAmount,
-    'paymentStatus': input.paymentStatus,
-    ...(input.paymentTransactionId && { 'paymentTransactionId': input.paymentTransactionId }),
-    ...(input.paymentUrl && { 'paymentUrl': input.paymentUrl }),
-    'paymentMethod': input.paymentMethod || 'AirPAY',
-    'status': input.status,
-  },
-}),
-
+        fields: {
+          reservationId: reservationId,
+          guestName: input.guestName,
+          email: input.email,
+          checkInDate: input.checkInDate,
+          checkOutDate: input.checkOutDate,
+          numberOfNights: input.numberOfNights,
+          numberOfGuests: input.numberOfGuests,
+          totalAmount: input.totalAmount,
+          paymentStatus: input.paymentStatus,
+          ...(input.paymentTransactionId && { paymentTransactionId: input.paymentTransactionId } ),
+          ...(input.paymentUrl && { paymentUrl: input.paymentUrl }),
+          paymentMethod: input.paymentMethod || 'AirPAY',
+          status: input.status,
+        },
       }),
     }
   )
@@ -165,7 +162,7 @@ export async function getReservations(filters?: { status?: string }) {
   const tableId = process.env.LARK_RESERVATIONS_TABLE_ID
   
   let url = `https://open.larksuite.com/open-apis/bitable/v1/apps/${baseId}/tables/${tableId}/records`
-  if (filters?.status) {
+  if (filters?.status ) {
     url += `?filter=CurrentValue.[Status]="${filters.status}"`
   }
 
@@ -176,15 +173,15 @@ export async function getReservations(filters?: { status?: string }) {
 
   return data.data.items.map((item) => ({
     id: item.record_id,
-    reservationId: String(item.fields['Reservation ID'] || ''),
-    guestName: String(item.fields['Guest Name'] || ''),
-    checkInDate: typeof item.fields['Check-in Date'] === 'number' 
-      ? new Date(item.fields['Check-in Date']).toISOString().split('T')[0] 
-      : String(item.fields['Check-in Date']),
-    checkOutDate: typeof item.fields['Check-out Date'] === 'number'
-      ? new Date(item.fields['Check-out Date']).toISOString().split('T')[0]
-      : String(item.fields['Check-out Date']),
-    status: item.fields['Status'] as string,
+    reservationId: String(item.fields['reservationId'] || ''),
+    guestName: String(item.fields['guestName'] || ''),
+    checkInDate: typeof item.fields['checkInDate'] === 'number' 
+      ? new Date(item.fields['checkInDate']).toISOString().split('T')[0] 
+      : String(item.fields['checkInDate']),
+    checkOutDate: typeof item.fields['checkOutDate'] === 'number'
+      ? new Date(item.fields['checkOutDate']).toISOString().split('T')[0]
+      : String(item.fields['checkOutDate']),
+    status: item.fields['status'] as string,
   }))
 }
 
