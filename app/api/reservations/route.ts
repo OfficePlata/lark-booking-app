@@ -3,7 +3,7 @@
 // POST: 料金をサーバー側で再計算（特別料金加味）し、Larkへ送信します。
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createReservation, getReservations, getBookedDatesInRange, getSpecialRates } from '@/lib/lark'
+import { getReservations, getBookedDatesInRange, getSpecialRates } from '@/lib/lark'
 import { calculatePrice } from '@/lib/booking/pricing'
 import { validateBookingNights } from '@/lib/booking/restrictions'
 import { sendLarkNotification, sendLarkErrorNotification } from '@/lib/lark-webhook'
@@ -71,30 +71,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Price calculation error' }, { status: 400 })
     }
 
-    console.log('[Reservation API] Creating reservation in Lark BASE')
-    const reservation = await createReservation({
-      guestName,
-      email,
-      checkInDate,
-      checkOutDate,
-      numberOfNights: pricing.numberOfNights,
-      numberOfGuests: Number(numberOfGuests),
-      totalAmount: pricing.totalAmount, 
-      paymentStatus,
-      paymentTransactionId,
-      paymentUrl,
-      paymentMethod,
-      status: 'Confirmed', 
-    })
-    console.log('[Reservation API] Reservation created:', reservation.id)
+    // 予約IDを生成
+    const reservationId = `RES-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
+    console.log('[Reservation API] Generated reservation ID:', reservationId)
 
-    // Lark Webhookに通知を送信
+    // Lark Webhookに通知を送信（Lark自動化がレコードを作成）
     const webhookUrl = process.env.LARK_WEBHOOK_URL
     
     if (webhookUrl) {
       console.log('[Reservation API] Sending Lark webhook notification')
       try {
         await sendLarkNotification(webhookUrl, {
+          reservationId,
           guestName,
           email,
           checkInDate,
@@ -104,10 +92,11 @@ export async function POST(request: NextRequest) {
           totalAmount: pricing.totalAmount,
           paymentStatus,
           paymentMethod,
+          status: 'Confirmed',
         })
         console.log('[Reservation API] Lark webhook notification sent successfully')
       } catch (notificationError) {
-        // 通知の失敗はログに記録するが、予約処理は継続
+        // 通知の失敗はログに記録し、エラーを返す
         console.error('[Reservation API] Failed to send Lark notification:', notificationError)
         
         try {
@@ -119,13 +108,32 @@ export async function POST(request: NextRequest) {
         } catch (errorNotificationError) {
           console.error('[Reservation API] Failed to send error notification:', errorNotificationError)
         }
+        
+        return NextResponse.json({ error: 'Failed to send reservation to Lark' }, { status: 500 })
       }
     } else {
-      console.warn('[Reservation API] LARK_WEBHOOK_URL is not set, skipping webhook notification')
+      console.error('[Reservation API] LARK_WEBHOOK_URL is not set')
+      return NextResponse.json({ error: 'Lark webhook not configured' }, { status: 500 })
     }
 
     console.log('[Reservation API] Reservation process completed successfully')
-    return NextResponse.json({ reservation, pricing })
+    return NextResponse.json({ 
+      reservation: {
+        id: reservationId,
+        reservationId,
+        guestName,
+        email,
+        checkInDate,
+        checkOutDate,
+        numberOfNights: pricing.numberOfNights,
+        numberOfGuests: Number(numberOfGuests),
+        totalAmount: pricing.totalAmount,
+        paymentStatus,
+        paymentMethod,
+        status: 'Confirmed',
+      }, 
+      pricing 
+    })
   } catch (error) {
     console.error('[Reservation API] Error:', error)
     
