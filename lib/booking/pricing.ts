@@ -56,3 +56,9 @@ export function calculatePrice(
     total,
   }
 }
+/**
+ * 金額を日本円形式でフォーマット
+ */
+export function formatCurrency(amount: number): string {
+  return `¥${amount.toLocaleString('ja-JP')}`
+}
