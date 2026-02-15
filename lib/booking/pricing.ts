@@ -1,23 +1,45 @@
 /**
  * 料金計算ロジック
+ * 特別料金（SpecialRate）に対応した日別料金計算を行います
  */
 
+import { SpecialRate } from '@/lib/lark'
+
+export interface DailyRate {
+  date: string // YYYY-MM-DD形式
+  ratePerNight: number
+  isSpecialRate: boolean
+  specialRateName?: string
+}
+
 export interface PricingCalculation {
-  basePrice: number
+  // 基本情報
   numberOfNights: number
   numberOfGuests: number
-  subtotal: number
-  discount: number
-  total: number
+  
+  // 日別料金
+  dates: DailyRate[]
+  
+  // 基本料金（宿泊料金の合計）
+  baseTotal: number
+  ratePerNight: number // 平均単価（特別料金がない場合のみ意味がある）
+  
+  // 追加人数料金
+  additionalGuests: number // 追加人数（3名以上の場合）
+  additionalGuestTotal: number // 追加人数料金の合計
+  
+  // 合計金額
+  totalAmount: number
 }
 
 /**
- * 宿泊料金を計算
+ * 宿泊料金を計算（特別料金対応版）
  */
 export function calculatePrice(
   checkInDate: Date,
   checkOutDate: Date,
-  numberOfGuests: number
+  numberOfGuests: number,
+  specialRates: SpecialRate[] = []
 ): PricingCalculation {
   // 宿泊数を計算
   const numberOfNights = Math.ceil(
@@ -25,37 +47,72 @@ export function calculatePrice(
   )
 
   // 基本料金（2名まで）
-  const basePrice = 18000
+  const defaultBasePrice = 18000
 
-  // 3名以上の場合、1名あたり5,000円追加
-  const extraGuestFee = numberOfGuests > 2 ? (numberOfGuests - 2) * 5000 : 0
+  // 追加人数料金（3名以上の場合、1名あたり5,000円/泊）
+  const additionalGuests = numberOfGuests > 2 ? numberOfGuests - 2 : 0
+  const additionalGuestFeePerNight = 5000
 
-  // 1泊あたりの料金
-  const pricePerNight = basePrice + extraGuestFee
+  // 日別料金を計算
+  const dates: DailyRate[] = []
+  let baseTotal = 0
 
-  // 小計
-  const subtotal = pricePerNight * numberOfNights
+  for (let i = 0; i < numberOfNights; i++) {
+    const currentDate = new Date(checkInDate)
+    currentDate.setDate(currentDate.getDate() + i)
+    const dateStr = currentDate.toISOString().split('T')[0]
 
-  // 連泊割引
-  let discount = 0
-  if (numberOfNights === 2) {
-    discount = 3000 // 2泊で3,000円割引
-  } else if (numberOfNights >= 3) {
-    discount = 6000 // 3泊以上で6,000円割引
+    // この日に適用される特別料金を探す（優先度が高い順）
+    const applicableRate = specialRates
+      .filter(rate => dateStr >= rate.startDate && dateStr <= rate.endDate)
+      .sort((a, b) => b.priority - a.priority)[0]
+
+    let ratePerNight: number
+    let isSpecialRate: boolean
+    let specialRateName: string | undefined
+
+    if (applicableRate) {
+      // 特別料金が適用される
+      ratePerNight = applicableRate.pricePerNight
+      isSpecialRate = true
+      specialRateName = applicableRate.name
+    } else {
+      // 通常料金
+      ratePerNight = defaultBasePrice
+      isSpecialRate = false
+    }
+
+    dates.push({
+      date: dateStr,
+      ratePerNight,
+      isSpecialRate,
+      specialRateName,
+    })
+
+    baseTotal += ratePerNight
   }
+
+  // 追加人数料金の合計
+  const additionalGuestTotal = additionalGuests * additionalGuestFeePerNight * numberOfNights
 
   // 合計金額
-  const total = subtotal - discount
+  const totalAmount = baseTotal + additionalGuestTotal
+
+  // 平均単価（参考値）
+  const averageRatePerNight = numberOfNights > 0 ? baseTotal / numberOfNights : 0
 
   return {
-    basePrice: pricePerNight,
     numberOfNights,
     numberOfGuests,
-    subtotal,
-    discount,
-    total,
+    dates,
+    baseTotal,
+    ratePerNight: averageRatePerNight,
+    additionalGuests,
+    additionalGuestTotal,
+    totalAmount,
   }
 }
+
 /**
  * 金額を日本円形式でフォーマット
  */
