@@ -1,7 +1,6 @@
 // 【ファイル概要】
 // 予約に関するAPIエンドポイント（サーバーサイド）です。
-// 料金計算を行い、結果をLarkの自動化Webhookへ送信します。
-// ※Larkへのレコード保存はWebhook経由で行われます。
+// 料金計算後、Larkの「決済マスタ」を検索してリンクを紐付け、Lark自動化Webhookへデータを送信します。
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getReservations, getBookedDatesInRange, getSpecialRates, getPaymentMasters } from '@/lib/lark'
@@ -10,8 +9,8 @@ import { validateBookingNights } from '@/lib/booking/restrictions'
 
 export const runtime = 'edge';
 
-// Lark Automation Webhook URL
-const AUTOMATION_WEBHOOK_URL = "https://cjpg214zu1bc.jp.larksuite.com/base/automation/webhook/event/AF25a6jG9wKoexhNdNKjbIhUpzg"
+// Lark Automation Webhook URL (このURLに向けてデータを送信します)
+const LARK_WEBHOOK_URL = "https://cjpg214zu1bc.jp.larksuite.com/base/automation/webhook/event/AF25a6jG9wKoexhNdNKjbIhUpzg"
 
 export async function GET(request: NextRequest) {
   try {
@@ -63,6 +62,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. 決済リンクの自動マッチング
+    // Larkの Payment Masters テーブルから、この金額(totalAmount)に対応するリンクを探す
     let matchedPaymentUrl = ''
     try {
       const paymentMasters = await getPaymentMasters()
@@ -77,34 +77,38 @@ export async function POST(request: NextRequest) {
     // 3. Lark Webhookへ送信 (Lark側でレコード作成 & GAS連携)
     const reservationId = `RES-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
     
-    const webhookData = {
+    const webhookPayload = {
       reservationId: reservationId,
       guestName: guestName,
       email: email,
-      checkInDate: checkInDate,
+      checkInDate: checkInDate, // LarkにはYYYY-MM-DD文字列で送るのが安全
       checkOutDate: checkOutDate,
       numberOfNights: pricing.numberOfNights,
       numberOfGuests: Number(numberOfGuests),
       totalAmount: pricing.totalAmount,
       paymentStatus: paymentStatus,
+      paymentTransactionId: '',
+      paymentUrl: matchedPaymentUrl, // 自動マッチングしたURL
       paymentMethod: paymentMethod,
-      paymentUrl: matchedPaymentUrl,
       status: 'Confirmed'
     }
 
-    await fetch(AUTOMATION_WEBHOOK_URL, {
+    // WebhookへPOST送信
+    await fetch(LARK_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(webhookData)
+      body: JSON.stringify(webhookPayload)
     })
 
+    // フロントエンドへは成功レスポンスを返す
+    // ※Larkへの保存自体は非同期で行われるため、ここでは送信成功をもって完了とします
     return NextResponse.json({ 
-      reservation: webhookData, // フロントエンドには送信したデータを返す
+      reservation: webhookPayload, 
       pricing 
     })
 
   } catch (error) {
     console.error(error)
-    return NextResponse.json({ error: 'Failed to create reservation' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to process reservation request' }, { status: 500 })
   }
 }
