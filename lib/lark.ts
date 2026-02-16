@@ -1,6 +1,7 @@
 // 【ファイル概要】
 // Lark Base (多維表格) との通信を行う主要ファイルです。
-// 予約データの取得・作成(API直接書き込み)、特別料金、決済マスタの取得を行います。
+// 予約データの取得、特別料金、および決済マスタの取得を行います。
+// ※予約作成(createReservation)は削除しました。Lark自動化Webhook経由で行います。
 
 interface LarkTokenResponse {
   code: number
@@ -15,14 +16,6 @@ interface LarkListResponse {
   data: {
     items: LarkRecord[]
     total: number
-  }
-}
-
-interface LarkCreateResponse {
-  code: number
-  msg: string
-  data: {
-    record: LarkRecord
   }
 }
 
@@ -91,6 +84,7 @@ export async function getSpecialRates(): Promise<SpecialRate[]> {
         if (typeof val === 'string') return val.split('T')[0]
         return ''
       }
+
       return {
         id: item.record_id,
         name: String(item.fields['Name'] || ''),
@@ -107,6 +101,7 @@ export async function getSpecialRates(): Promise<SpecialRate[]> {
 }
 
 // --- 決済マスタ (Payment Masters) ---
+// 以前のご要望にあった「金額に応じたリンク自動送信」のために必要です
 
 export interface PaymentMaster {
   amount: number
@@ -138,6 +133,7 @@ export async function getPaymentMasters(): Promise<PaymentMaster[]> {
       } else if (typeof rawUrl === 'object' && rawUrl !== null && 'link' in rawUrl) {
         urlStr = (rawUrl as { link: string }).link
       }
+
       return {
         amount: Number(item.fields['Amount']) || 0,
         url: urlStr
@@ -151,66 +147,6 @@ export async function getPaymentMasters(): Promise<PaymentMaster[]> {
 
 // --- 予約管理 ---
 
-export interface CreateReservationInput {
-  guestName: string
-  email: string
-  checkInDate: string
-  checkOutDate: string
-  numberOfNights: number
-  numberOfGuests: number
-  totalAmount: number
-  paymentStatus: string
-  paymentTransactionId?: string
-  paymentUrl?: string
-  paymentMethod?: string
-  status: 'Confirmed' | 'Cancelled'
-}
-
-// ★修正: Lark APIを使ってテーブルに直接レコードを作成します
-export async function createReservation(input: CreateReservationInput) {
-  const token = await getTenantAccessToken()
-  const baseId = process.env.LARK_BASE_ID
-  const tableId = process.env.LARK_RESERVATIONS_TABLE_ID
-  const reservationId = `RES-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
-
-  // Larkのフィールド名(キー)と一致させる必要があります
-  const recordFields = {
-    'reservationId': reservationId,
-    'guestName': input.guestName,
-    'email': input.email,
-    'checkInDate': new Date(input.checkInDate).getTime(),
-    'checkOutDate': new Date(input.checkOutDate).getTime(),
-    'numberOfNights': input.numberOfNights,
-    'numberOfGuests': input.numberOfGuests,
-    'totalAmount': input.totalAmount,
-    'paymentStatus': input.paymentStatus,
-    'paymentTransactionId': input.paymentTransactionId || '', // 仮: Payment Transaction IDの場合あり
-    'Payment URL': input.paymentUrl ? { link: input.paymentUrl, text: input.paymentUrl } : null,
-    'paymentMethod': input.paymentMethod || 'AirPAY',
-    'status': input.status,
-  }
-
-  const response = await fetch(
-    `https://open.larksuite.com/open-apis/bitable/v1/apps/${baseId}/tables/${tableId}/records`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ fields: recordFields }),
-    }
-  )
-  
-  const data = await response.json()
-  if (data.code !== 0) {
-    console.error('Create Reservation Error:', data)
-    throw new Error(`Create Error: ${data.msg}`)
-  }
-
-  return { ...input, id: data.data.record.record_id, reservationId }
-}
-
 export async function getReservations(filters?: { status?: string }) {
   const token = await getTenantAccessToken()
   const baseId = process.env.LARK_BASE_ID
@@ -218,8 +154,7 @@ export async function getReservations(filters?: { status?: string }) {
   
   let url = `https://open.larksuite.com/open-apis/bitable/v1/apps/${baseId}/tables/${tableId}/records`
   if (filters?.status) {
-    // フィルタリングも新しいフィールド名に合わせる
-    url += `?filter=CurrentValue.[status]="${filters.status}"`
+    url += `?filter=CurrentValue.[Status]="${filters.status}"`
   }
 
   const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
@@ -229,16 +164,15 @@ export async function getReservations(filters?: { status?: string }) {
 
   return data.data.items.map((item) => ({
     id: item.record_id,
-    reservationId: String(item.fields['reservationId'] || ''),
-    guestName: String(item.fields['guestName'] || ''),
-    // 日付フィールドが数値(タイムスタンプ)か文字列かで分岐
-    checkInDate: typeof item.fields['checkInDate'] === 'number' 
-      ? new Date(item.fields['checkInDate']).toISOString().split('T')[0] 
-      : String(item.fields['checkInDate'] || ''),
-    checkOutDate: typeof item.fields['checkOutDate'] === 'number'
-      ? new Date(item.fields['checkOutDate']).toISOString().split('T')[0]
-      : String(item.fields['checkOutDate'] || ''),
-    status: item.fields['status'] as string,
+    reservationId: String(item.fields['Reservation ID'] || ''),
+    guestName: String(item.fields['Guest Name'] || ''),
+    checkInDate: typeof item.fields['Check-in Date'] === 'number' 
+      ? new Date(item.fields['Check-in Date']).toISOString().split('T')[0] 
+      : String(item.fields['Check-in Date']),
+    checkOutDate: typeof item.fields['Check-out Date'] === 'number'
+      ? new Date(item.fields['Check-out Date']).toISOString().split('T')[0]
+      : String(item.fields['Check-out Date']),
+    status: item.fields['Status'] as string,
   }))
 }
 
@@ -247,15 +181,8 @@ export async function getBookedDatesInRange(start: string, end: string) {
   const bookedSet = new Set<string>()
   
   reservations.forEach((res) => {
-    // 日付が取得できていない場合はスキップ
-    if (!res.checkInDate || !res.checkOutDate) return;
-
     const s = new Date(res.checkInDate)
     const e = new Date(res.checkOutDate)
-    
-    // 日付が無効な場合もスキップ
-    if (isNaN(s.getTime()) || isNaN(e.getTime())) return;
-
     for (let d = new Date(s); d < e; d.setDate(d.getDate() + 1)) {
       bookedSet.add(d.toISOString().split('T')[0])
     }
@@ -281,6 +208,7 @@ export async function getBookedDates(): Promise<string[]> {
   return range.filter(d => d.isBooked).map(d => d.date)
 }
 
+// UI表示用
 export async function getRooms() {
   return [{
     id: 'default-room',
