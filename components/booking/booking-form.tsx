@@ -35,6 +35,7 @@ export function BookingForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [specialRates, setSpecialRates] = useState<SpecialRate[]>([])
+  const [bookedDates, setBookedDates] = useState<string[]>([])
 
   useEffect(() => {
     async function loadRates() {
@@ -49,6 +50,33 @@ export function BookingForm() {
       }
     }
     loadRates()
+  }, [])
+
+  // 予約済み日付と予約不可日を取得し、カレンダーに反映
+  useEffect(() => {
+    async function loadBookedDates() {
+      try {
+        // 今日から2年後までの予約済み日付を取得
+        const today = new Date()
+        const futureDate = new Date()
+        futureDate.setFullYear(futureDate.getFullYear() + 2)
+        const start = today.toISOString().split('T')[0]
+        const end = futureDate.toISOString().split('T')[0]
+
+        const res = await fetch(`/api/reservations?action=booked-dates&start=${start}&end=${end}`)
+        const data = await res.json()
+        if (data.bookedDates && Array.isArray(data.bookedDates)) {
+          // isBooked: true の日付のみを抽出
+          const dates = data.bookedDates
+            .filter((d: { date: string; isBooked: boolean }) => d.isBooked)
+            .map((d: { date: string; isBooked: boolean }) => d.date)
+          setBookedDates(dates)
+        }
+      } catch (e) {
+        console.error('Failed to load booked dates', e)
+      }
+    }
+    loadBookedDates()
   }, [])
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -113,6 +141,7 @@ export function BookingForm() {
           selectedCheckOut={checkOut}
           onSelectCheckIn={handleCheckInSelect}
           onSelectCheckOut={handleCheckOutSelect}
+          bookedDates={bookedDates}
           className="mb-6"
         />
         {checkIn && checkOut && (
