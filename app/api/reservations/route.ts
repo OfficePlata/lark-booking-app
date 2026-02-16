@@ -49,16 +49,55 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action')
     
-    // デバッグ: フィルタなしで全レコードを取得
+    // デバッグ: Lark APIの生データをそのまま返す
     if (action === 'debug') {
-      const allReservations = await getReservations()
-      const unavailableDates = await getUnavailableDates()
-      return NextResponse.json({ 
-        allReservations,
-        unavailableDates,
-        count: allReservations.length,
-        unavailableCount: unavailableDates.length
-      })
+      try {
+        // 環境変数の確認
+        const envInfo = {
+          LARK_APP_ID: process.env.LARK_APP_ID ? '設定済み' : '未設定',
+          LARK_APP_SECRET: process.env.LARK_APP_SECRET ? '設定済み' : '未設定',
+          LARK_BASE_ID: process.env.LARK_BASE_ID || '未設定',
+          LARK_RESERVATIONS_TABLE_ID: process.env.LARK_RESERVATIONS_TABLE_ID || '未設定',
+          LARK_WEBHOOK_URL: process.env.LARK_WEBHOOK_URL ? '設定済み' : '未設定',
+        }
+
+        // トークン取得テスト
+        const tokenRes = await fetch('https://open.larksuite.com/open-apis/auth/v3/tenant_access_token/internal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            app_id: process.env.LARK_APP_ID,
+            app_secret: process.env.LARK_APP_SECRET,
+          }),
+        })
+        const tokenData = await tokenRes.json()
+
+        // トークンが取得できない場合
+        if (tokenData.code !== 0) {
+          return NextResponse.json({ envInfo, tokenError: tokenData })
+        }
+
+        // Lark APIでレコード取得
+        const baseId = process.env.LARK_BASE_ID
+        const tableId = process.env.LARK_RESERVATIONS_TABLE_ID
+        const apiUrl = `https://open.larksuite.com/open-apis/bitable/v1/apps/${baseId}/tables/${tableId}/records`
+        
+        const recordsRes = await fetch(apiUrl, {
+          headers: { Authorization: `Bearer ${tokenData.tenant_access_token}` },
+        })
+        const recordsData = await recordsRes.json()
+
+        return NextResponse.json({
+          envInfo,
+          tokenStatus: '取得成功',
+          apiUrl,
+          rawResponse: recordsData,
+        })
+      } catch (error) {
+        return NextResponse.json({ 
+          debugError: error instanceof Error ? error.message : String(error) 
+        })
+      }
     }
 
     // 予約済み日付の取得
