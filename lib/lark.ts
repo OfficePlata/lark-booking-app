@@ -1,7 +1,6 @@
 // 【ファイル概要】
 // Lark Base (多維表格) との通信を行う主要ファイルです。
-// 予約データの取得、特別料金の取得、決済マスタの取得を行います。
-// ※予約作成(createReservation)は削除しました。Lark自動化Webhook経由で行います。
+// 予約データの取得・作成(API直接書き込み)、特別料金、決済マスタの取得を行います。
 
 interface LarkTokenResponse {
   code: number
@@ -16,6 +15,14 @@ interface LarkListResponse {
   data: {
     items: LarkRecord[]
     total: number
+  }
+}
+
+interface LarkCreateResponse {
+  code: number
+  msg: string
+  data: {
+    record: LarkRecord
   }
 }
 
@@ -84,7 +91,6 @@ export async function getSpecialRates(): Promise<SpecialRate[]> {
         if (typeof val === 'string') return val.split('T')[0]
         return ''
       }
-
       return {
         id: item.record_id,
         name: String(item.fields['Name'] || ''),
@@ -144,6 +150,62 @@ export async function getPaymentMasters(): Promise<PaymentMaster[]> {
 }
 
 // --- 予約管理 ---
+
+export interface CreateReservationInput {
+  guestName: string
+  email: string
+  checkInDate: string
+  checkOutDate: string
+  numberOfNights: number
+  numberOfGuests: number
+  totalAmount: number
+  paymentStatus: string
+  paymentTransactionId?: string
+  paymentUrl?: string
+  paymentMethod?: string
+  status: 'Confirmed' | 'Cancelled'
+}
+
+// ★修正: Lark APIを使ってテーブルに直接レコードを作成します
+export async function createReservation(input: CreateReservationInput) {
+  const token = await getTenantAccessToken()
+  const baseId = process.env.LARK_BASE_ID
+  const tableId = process.env.LARK_RESERVATIONS_TABLE_ID
+  const reservationId = `RES-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
+
+  const recordFields = {
+    'Reservation ID': reservationId,
+    'Guest Name': input.guestName,
+    'Email': input.email,
+    'Check-in Date': new Date(input.checkInDate).getTime(),
+    'Check-out Date': new Date(input.checkOutDate).getTime(),
+    'Number of Nights': input.numberOfNights,
+    'Number of Guests': input.numberOfGuests,
+    'Total Amount': input.totalAmount,
+    'Payment Status': input.paymentStatus,
+    'Payment Transaction ID': input.paymentTransactionId || '',
+    'Payment URL': input.paymentUrl ? { link: input.paymentUrl, text: input.paymentUrl } : null,
+    'Payment Method': input.paymentMethod || 'AirPAY',
+    'Status': input.status,
+  }
+
+  const response = await fetch(
+    `https://open.larksuite.com/open-apis/bitable/v1/apps/${baseId}/tables/${tableId}/records`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ fields: recordFields }),
+    }
+  )
+  
+  const data: LarkCreateResponse = await response.json()
+  if (data.code !== 0) throw new Error(`Create Error: ${data.msg}`)
+
+  return { ...input, id: data.data.record.record_id, reservationId }
+}
 
 export async function getReservations(filters?: { status?: string }) {
   const token = await getTenantAccessToken()
