@@ -8,7 +8,7 @@ import Link from 'next/link'
 const PLANS = [
   {
     name: '基本プラン',
-    description: '最大3名様まで一棟貸切',
+    description: '最大3名様まで',
     price: '¥18,000~',
     unit: '/泊 (2名様)',
     features: [
@@ -16,7 +16,6 @@ const PLANS = [
       'Wi-Fi / 電源完備',
       'キッチン / 調理器具利用可',
       'アメニティ完備',
-      '駐車場あり (2台)',
     ],
     buttonText: '予約する',
     href: '#booking',
@@ -54,7 +53,7 @@ export function PricingSection() {
                 <span className="text-sm font-semibold text-muted-foreground">{plan.unit}</span>
               </div>
               <div className="mt-4 flex flex-col gap-2 text-sm text-muted-foreground">
-                <p>※3名様利用時は +¥4,000/名</p>
+                <p>※3名様利用について準備中</p>
                 <p>※連泊割引あり（2泊で単価¥15,000、3泊以上で¥12,000）</p>
               </div>
               
