@@ -1,11 +1,7 @@
 // 【ファイル概要】
 // 予約制限に関するビジネスロジックを定義するファイルです。
-// 「最低3泊から」といった宿泊日数の制限や、予約可能な期間の判定ロジックを提供します。
-
-// Booking Restrictions Logic
-// Priority booking: 3+ night stays have priority
-// Before the 20th of the previous month, only 3+ night stays are allowed
-// After the 20th, 1-2 night stays become available
+// 現在は最低1泊から予約可能です。
+// 将来的に「最低3泊から」といった制限を追加する場合は、このファイルを修正してください。
 
 export interface BookingRestriction {
   isRestricted: boolean
@@ -15,65 +11,53 @@ export interface BookingRestriction {
 }
 
 /**
- * Check if short stays (1-2 nights) are restricted for a given check-in date
- * @param checkInDate - The desired check-in date
- * @returns Booking restriction details
+ * 予約制限をチェックする
+ * 
+ * 【現在の設定】
+ * - 最低1泊から予約可能（制限なし）
+ * 
+ * @param checkInDate - チェックイン日
+ * @returns 予約制限の詳細
  */
 export function checkBookingRestriction(checkInDate: Date): BookingRestriction {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  
-  // Get the check-in month and year
-  const checkInMonth = checkInDate.getMonth()
-  const checkInYear = checkInDate.getFullYear()
-  
-  // Calculate the restriction lift date (20th of the previous month)
-  let restrictionLiftMonth = checkInMonth - 1
-  let restrictionLiftYear = checkInYear
-  
-  if (restrictionLiftMonth < 0) {
-    restrictionLiftMonth = 11 // December
-    restrictionLiftYear -= 1
-  }
-  
-  const restrictionLiftDate = new Date(restrictionLiftYear, restrictionLiftMonth, 20)
-  restrictionLiftDate.setHours(0, 0, 0, 0)
-  
-  // Check if we're before the restriction lift date
-  const isRestricted = today < restrictionLiftDate
-  
+  // 現在は制限なし（1泊から予約OK）
   return {
-    isRestricted,
-    minNights: isRestricted ? 3 : 1,
-    restrictionLiftDate,
-    message: isRestricted
-      ? `Reservations of 3+ nights only until ${formatDate(restrictionLiftDate)}`
-      : 'All stay lengths available',
+    isRestricted: false,
+    minNights: 1,
+    restrictionLiftDate: new Date(),
+    message: '1泊から予約可能です',
   }
 }
 
 /**
- * Validate if a booking meets the minimum night requirement
- * @param checkInDate - Check-in date
- * @param checkOutDate - Check-out date
- * @returns Validation result
+ * 宿泊数のバリデーション
+ * 
+ * 【チェック内容】
+ * - チェックアウト日がチェックイン日より後であること
+ * - 最低宿泊数を満たしていること（現在は1泊以上）
+ * 
+ * @param checkInDate - チェックイン日
+ * @param checkOutDate - チェックアウト日
+ * @returns バリデーション結果
  */
 export function validateBookingNights(
   checkInDate: Date,
   checkOutDate: Date
 ): { isValid: boolean; message: string; nights: number } {
-  // Calculate number of nights
+  // 宿泊数を計算
   const timeDiff = checkOutDate.getTime() - checkInDate.getTime()
   const nights = Math.ceil(timeDiff / (1000 * 60 * 60 * 24))
   
+  // チェックアウト日がチェックイン日より後であること
   if (nights < 1) {
     return {
       isValid: false,
-      message: 'Check-out date must be after check-in date',
+      message: 'チェックアウト日はチェックイン日より後にしてください',
       nights: 0,
     }
   }
   
+  // 最低宿泊数のチェック（現在は1泊以上）
   const restriction = checkBookingRestriction(checkInDate)
   
   if (nights < restriction.minNights) {
@@ -86,15 +70,16 @@ export function validateBookingNights(
   
   return {
     isValid: true,
-    message: 'Booking is valid',
+    message: '予約可能です',
     nights,
   }
 }
 
 /**
- * Get the minimum check-out date based on check-in and restrictions
- * @param checkInDate - Check-in date
- * @returns Minimum check-out date
+ * 最低チェックアウト日を取得
+ * 
+ * @param checkInDate - チェックイン日
+ * @returns 最低チェックアウト日
  */
 export function getMinCheckOutDate(checkInDate: Date): Date {
   const restriction = checkBookingRestriction(checkInDate)
@@ -104,10 +89,11 @@ export function getMinCheckOutDate(checkInDate: Date): Date {
 }
 
 /**
- * Format date for display
- * @param date - Date to format
- * @param locale - 'ja' or 'en'
- * @returns Formatted date string
+ * 日付をフォーマットして表示用文字列を返す
+ * 
+ * @param date - フォーマットする日付
+ * @param locale - 'ja'（日本語）または 'en'（英語）
+ * @returns フォーマットされた日付文字列
  */
 export function formatDate(date: Date, locale: 'ja' | 'en' = 'ja'): string {
   if (locale === 'ja') {
@@ -121,10 +107,11 @@ export function formatDate(date: Date, locale: 'ja' | 'en' = 'ja'): string {
 }
 
 /**
- * Calculate the number of nights between two dates
- * @param checkIn - Check-in date
- * @param checkOut - Check-out date
- * @returns Number of nights
+ * 2つの日付間の宿泊数を計算
+ * 
+ * @param checkIn - チェックイン日
+ * @param checkOut - チェックアウト日
+ * @returns 宿泊数
  */
 export function calculateNights(checkIn: Date, checkOut: Date): number {
   const timeDiff = checkOut.getTime() - checkIn.getTime()
@@ -132,9 +119,10 @@ export function calculateNights(checkIn: Date, checkOut: Date): number {
 }
 
 /**
- * Check if a date is in the past
- * @param date - Date to check
- * @returns true if the date is in the past
+ * 日付が過去かどうかを判定
+ * 
+ * @param date - 判定する日付
+ * @returns 過去の日付ならtrue
  */
 export function isDateInPast(date: Date): boolean {
   const today = new Date()
@@ -143,10 +131,11 @@ export function isDateInPast(date: Date): boolean {
 }
 
 /**
- * Get all dates in a range
- * @param startDate - Start date
- * @param endDate - End date
- * @returns Array of dates
+ * 指定された範囲内の全日付を配列で返す
+ * 
+ * @param startDate - 開始日
+ * @param endDate - 終了日
+ * @returns 日付の配列
  */
 export function getDatesInRange(startDate: Date, endDate: Date): Date[] {
   const dates: Date[] = []
