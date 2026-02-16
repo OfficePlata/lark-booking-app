@@ -34,7 +34,6 @@ export function BookingForm() {
   const [checkOut, setCheckOut] = useState<Date | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
-  
   const [specialRates, setSpecialRates] = useState<SpecialRate[]>([])
 
   useEffect(() => {
@@ -103,7 +102,6 @@ export function BookingForm() {
     )
   }
 
-  // 1名〜3名の選択肢を生成
   const guestOptions = Array.from({ length: BASE_CONFIG.maxGuests }, (_, i) => i + 1)
 
   return (
@@ -117,6 +115,7 @@ export function BookingForm() {
           onSelectCheckOut={handleCheckOutSelect}
           className="mb-6"
         />
+        
         {checkIn && checkOut && (
           <PricingDisplay 
             checkIn={checkIn} 
@@ -126,6 +125,7 @@ export function BookingForm() {
           />
         )}
       </div>
+
       <div>
         <h3 className="text-lg font-medium mb-4">2. お客様情報</h3>
         <div className="bg-card rounded-lg border p-6">
@@ -142,7 +142,9 @@ export function BookingForm() {
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                       <SelectContent>
-                        {guestOptions.map(n => <SelectItem key={n} value={String(n)}>{n}名</SelectItem>)}
+                        {guestOptions.map(n => (
+                          <SelectItem key={n} value={String(n)}>{n}名</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
