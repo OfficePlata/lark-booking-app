@@ -28,7 +28,6 @@ export interface PricingBreakdown {
   ratePerNight?: number
 }
 
-// 金額フォーマット関数
 export function formatCurrency(amount: number) {
   if (amount === undefined || amount === null || isNaN(amount)) return '¥0'
   return new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(amount)
@@ -43,24 +42,20 @@ export function calculatePrice(
   
   const numGuests = guests || 2
   
-  // 1. バリデーション
   if (!checkIn || !checkOut || checkIn >= checkOut) {
     return createEmptyBreakdown(numGuests)
   }
 
-  // 2. 泊数計算
   const oneDay = 1000 * 60 * 60 * 24
   const diffTime = checkOut.getTime() - checkIn.getTime()
   const numberOfNights = Math.round(diffTime / oneDay)
 
   if (numberOfNights <= 0) return createEmptyBreakdown(numGuests)
 
-  // 3. 基本単価決定 (連泊割引)
   let standardRate = BASE_CONFIG.defaultRates[1]
   if (numberOfNights === 2) standardRate = BASE_CONFIG.defaultRates[2]
   if (numberOfNights >= 3) standardRate = BASE_CONFIG.defaultRates[3]
 
-  // 4. 日ごとの計算 (特別料金適用)
   const dateDetails = []
   let baseTotal = 0
 
@@ -68,7 +63,6 @@ export function calculatePrice(
     const d = new Date(checkIn.getTime() + (i * oneDay))
     const dateStr = d.toISOString().split('T')[0]
 
-    // 特別料金を探す
     const special = specialRates?.find(r => 
       dateStr >= r.startDate && dateStr <= r.endDate
     ) 
@@ -92,11 +86,9 @@ export function calculatePrice(
     })
   }
 
-  // 5. 追加人数計算
   const additionalGuests = Math.max(0, numGuests - BASE_CONFIG.baseGuestCount)
   const additionalGuestTotal = additionalGuests * BASE_CONFIG.additionalGuestRate * numberOfNights
 
-  // 6. 合計
   const totalAmount = baseTotal + additionalGuestTotal
 
   return {
