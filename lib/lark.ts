@@ -1,7 +1,7 @@
 // 【ファイル概要】
 // Lark Base (多維表格) との通信を行う主要ファイルです。
-// 予約データの取得、特別料金の取得を行います。
-// 注意: createReservation()は削除されました。予約作成はLark自動化のWebhook経由で行います。
+// 予約データの取得、特別料金、および決済マスタの取得を行います。
+// ※予約作成(createReservation)は削除しました。Lark自動化Webhook経由で行います。
 
 interface LarkTokenResponse {
   code: number
@@ -100,6 +100,51 @@ export async function getSpecialRates(): Promise<SpecialRate[]> {
   }
 }
 
+// --- 決済マスタ (Payment Masters) ---
+// 以前のご要望にあった「金額に応じたリンク自動送信」のために必要です
+
+export interface PaymentMaster {
+  amount: number
+  url: string
+}
+
+export async function getPaymentMasters(): Promise<PaymentMaster[]> {
+  try {
+    const token = await getTenantAccessToken()
+    const baseId = process.env.LARK_BASE_ID
+    const tableId = process.env.LARK_PAYMENT_MASTERS_TABLE_ID
+
+    if (!tableId) return []
+
+    const url = `https://open.larksuite.com/open-apis/bitable/v1/apps/${baseId}/tables/${tableId}/records`
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      next: { revalidate: 60 } 
+    })
+
+    const data: LarkListResponse = await response.json()
+    if (data.code !== 0) return []
+
+    return data.data.items.map((item) => {
+      const rawUrl = item.fields['Payment URL']
+      let urlStr = ''
+      if (typeof rawUrl === 'string') {
+        urlStr = rawUrl
+      } else if (typeof rawUrl === 'object' && rawUrl !== null && 'link' in rawUrl) {
+        urlStr = (rawUrl as { link: string }).link
+      }
+
+      return {
+        amount: Number(item.fields['Amount']) || 0,
+        url: urlStr
+      }
+    }).filter(p => p.amount > 0 && p.url)
+  } catch (error) {
+    console.error('getPaymentMasters Error:', error)
+    return []
+  }
+}
+
 // --- 予約管理 ---
 
 export async function getReservations(filters?: { status?: string }) {
@@ -119,15 +164,15 @@ export async function getReservations(filters?: { status?: string }) {
 
   return data.data.items.map((item) => ({
     id: item.record_id,
-    reservationId: String(item.fields['reservationId'] || ''),
-    guestName: String(item.fields['guestName'] || ''),
-    checkInDate: typeof item.fields['checkInDate'] === 'number' 
-      ? new Date(item.fields['checkInDate']).toISOString().split('T')[0] 
-      : String(item.fields['checkInDate']),
-    checkOutDate: typeof item.fields['checkOutDate'] === 'number'
-      ? new Date(item.fields['checkOutDate']).toISOString().split('T')[0]
-      : String(item.fields['checkOutDate']),
-    status: item.fields['status'] as string,
+    reservationId: String(item.fields['Reservation ID'] || ''),
+    guestName: String(item.fields['Guest Name'] || ''),
+    checkInDate: typeof item.fields['Check-in Date'] === 'number' 
+      ? new Date(item.fields['Check-in Date']).toISOString().split('T')[0] 
+      : String(item.fields['Check-in Date']),
+    checkOutDate: typeof item.fields['Check-out Date'] === 'number'
+      ? new Date(item.fields['Check-out Date']).toISOString().split('T')[0]
+      : String(item.fields['Check-out Date']),
+    status: item.fields['Status'] as string,
   }))
 }
 
@@ -153,14 +198,23 @@ export async function getBookedDatesInRange(start: string, end: string) {
   return dates
 }
 
-// 【追加】ビルドエラー修正のための関数
 export async function getBookedDates(): Promise<string[]> {
   const today = new Date().toISOString().split('T')[0]
-  // 簡易的に今日から3年後までの予約済み日付リストを返す
   const futureDate = new Date()
-  futureDate.setFullYear(futureDate.getFullYear() + 3)
+  futureDate.setFullYear(futureDate.getFullYear() + 2)
   const endDate = futureDate.toISOString().split('T')[0]
 
   const range = await getBookedDatesInRange(today, endDate)
   return range.filter(d => d.isBooked).map(d => d.date)
+}
+
+// UI表示用
+export async function getRooms() {
+  return [{
+    id: 'default-room',
+    name: 'Luxury Ocean Villa',
+    capacity: 6,
+    basePrice: 18000,
+    images: ['/placeholder.jpg', '/placeholder-user.jpg']
+  }]
 }
