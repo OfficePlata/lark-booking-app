@@ -17,11 +17,11 @@ export function Footer() {
         <div className="grid md:grid-cols-3 gap-12">
           {/* Brand */}
           <div>
-            <h3 className="text-2xl font-semibold mb-4">YADO</h3>
+            <h3 className="text-2xl font-semibold mb-4">Stay Yokaban</h3>
             <p className="text-background/70 text-sm leading-relaxed">
               {locale === 'ja' 
-                ? '自然に囲まれた静かな空間で、心からのくつろぎをお届けします。特別な時間を、特別な場所で。'
-                : 'Experience true relaxation in a serene space surrounded by nature. A special place for special moments.'}
+                ? 'Stay Yokaban - 天文館で過ごす、特別な夜'
+                : 'Stay Yokaban - Your Night in Tenmonkan'}
             </p>
           </div>
 
@@ -31,22 +31,22 @@ export function Footer() {
             <ul className="space-y-3 text-sm text-background/70">
               <li>
                 <a 
-                  href="mailto:info@example.com" 
+                  href="mailto:zundare.hogane017@gmail.com" 
                   className="flex items-center gap-2 hover:text-background transition-colors"
                 >
                   <Mail className="w-4 h-4" />
-                  info@example.com
+                  zundare.hogane017@gmail.com
                 </a>
               </li>
               <li>
                 <a 
-                  href="https://instagram.com" 
+                  href="https://www.instagram.com/017mori?igsh=MWY4empxMzQxaWFrbg==" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 hover:text-background transition-colors"
                 >
                   <Instagram className="w-4 h-4" />
-                  @yado_official
+                  @017mori
                 </a>
               </li>
             </ul>
@@ -59,8 +59,8 @@ export function Footer() {
               <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
               <span>
                 {locale === 'ja' 
-                  ? '〒000-0000\n東京都XX区XX町1-2-3'
-                  : '1-2-3 XX-cho, XX-ku\nTokyo 000-0000, Japan'}
+                  ? '〒892-0843\n鹿児島市千日町9-23銀座ハイツ506号'
+                  : 'Room 506, Ginza Heights, 9-23 Sennichi-cho, Kagoshima City\nKagoshima 892-0843, Japan'}
               </span>
             </address>
           </div>
@@ -68,7 +68,7 @@ export function Footer() {
 
         {/* Copyright */}
         <div className="mt-12 pt-8 border-t border-background/10 text-center text-sm text-background/50">
-          <p>&copy; {new Date().getFullYear()} YADO. {t.footer.copyright}</p>
+          <p>&copy; {new Date().getFullYear()} Stay Yokaban. {t.footer.copyright}</p>
         </div>
       </div>
     </footer>
