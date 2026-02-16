@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
           LARK_APP_ID: process.env.LARK_APP_ID ? '設定済み' : '未設定',
           LARK_APP_SECRET: process.env.LARK_APP_SECRET ? '設定済み' : '未設定',
           LARK_BASE_ID: process.env.LARK_BASE_ID || '未設定',
-          LARK_RESERVATIONS_TABLE_ID: process.env.LARK_RESERVATIONS_TABLE_ID || '未設定',
+          LARK_TABLE_ID_RESERVATIONS: process.env.LARK_TABLE_ID_RESERVATIONS || '未設定',
           LARK_WEBHOOK_URL: process.env.LARK_WEBHOOK_URL ? '設定済み' : '未設定',
         }
 
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
 
         // Lark APIでレコード取得
         const baseId = process.env.LARK_BASE_ID
-        const tableId = process.env.LARK_RESERVATIONS_TABLE_ID
+        const tableId = process.env.LARK_TABLE_ID_RESERVATIONS
         const apiUrl = `https://open.larksuite.com/open-apis/bitable/v1/apps/${baseId}/tables/${tableId}/records`
         
         const recordsRes = await fetch(apiUrl, {
@@ -353,6 +353,6 @@ export async function POST(request: NextRequest) {
  * - LARK_APP_ID: Lark アプリID
  * - LARK_APP_SECRET: Lark アプリシークレット
  * - LARK_BASE_ID: Lark Base ID
- * - LARK_RESERVATIONS_TABLE_ID: RESERVATIONSテーブルID
+ * - LARK_TABLE_ID_RESERVATIONS: RESERVATIONSテーブルID
  * - LARK_SPECIAL_RATES_TABLE_ID: SPECIAL_RATESテーブルID
  */

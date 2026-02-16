@@ -282,7 +282,7 @@ export async function getPaymentMasters(): Promise<PaymentMaster[]> {
 export async function getReservations(filters?: { status?: string }) {
   const token = await getTenantAccessToken()
   const baseId = process.env.LARK_BASE_ID
-  const tableId = process.env.LARK_RESERVATIONS_TABLE_ID
+  const tableId = process.env.LARK_TABLE_ID_RESERVATIONS
   
   // URLを構築（フィルタがある場合は追加）
   let url = `https://open.larksuite.com/open-apis/bitable/v1/apps/${baseId}/tables/${tableId}/records`
@@ -335,7 +335,7 @@ export async function getUnavailableDates(): Promise<string[]> {
   try {
     const token = await getTenantAccessToken()
     const baseId = process.env.LARK_BASE_ID
-    const tableId = process.env.LARK_RESERVATIONS_TABLE_ID
+    const tableId = process.env.LARK_TABLE_ID_RESERVATIONS
 
     if (!tableId || !baseId) return []
 
