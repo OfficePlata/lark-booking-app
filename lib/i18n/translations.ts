@@ -16,7 +16,7 @@ export const translations = {
     // Hero: ご指定の文言を反映
     hero: {
       title: '天文館で過ごす、特別な夜',
-      subtitle: 'グルメや観光の中心地で、暮らすような旅を。お客様のためのプライベート空間です。',
+      subtitle: 'グルメや観光の中心地で、暮らすような旅を。/nお客様のためのプライベート空間です。',
       cta: '空室を検索',
     },
     // Booking Form
