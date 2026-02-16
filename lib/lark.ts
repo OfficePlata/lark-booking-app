@@ -173,20 +173,21 @@ export async function createReservation(input: CreateReservationInput) {
   const tableId = process.env.LARK_RESERVATIONS_TABLE_ID
   const reservationId = `RES-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
 
+  // Larkのフィールド名(キー)と一致させる必要があります
   const recordFields = {
-    'Reservation ID': reservationId,
-    'Guest Name': input.guestName,
-    'Email': input.email,
-    'Check-in Date': new Date(input.checkInDate).getTime(),
-    'Check-out Date': new Date(input.checkOutDate).getTime(),
-    'Number of Nights': input.numberOfNights,
-    'Number of Guests': input.numberOfGuests,
-    'Total Amount': input.totalAmount,
-    'Payment Status': input.paymentStatus,
-    'Payment Transaction ID': input.paymentTransactionId || '',
+    'reservationId': reservationId,
+    'guestName': input.guestName,
+    'email': input.email,
+    'checkInDate': new Date(input.checkInDate).getTime(),
+    'checkOutDate': new Date(input.checkOutDate).getTime(),
+    'numberOfNights': input.numberOfNights,
+    'numberOfGuests': input.numberOfGuests,
+    'totalAmount': input.totalAmount,
+    'paymentStatus': input.paymentStatus,
+    'paymentTransactionId': input.paymentTransactionId || '', // 仮: Payment Transaction IDの場合あり
     'Payment URL': input.paymentUrl ? { link: input.paymentUrl, text: input.paymentUrl } : null,
-    'Payment Method': input.paymentMethod || 'AirPAY',
-    'Status': input.status,
+    'paymentMethod': input.paymentMethod || 'AirPAY',
+    'status': input.status,
   }
 
   const response = await fetch(
@@ -201,8 +202,11 @@ export async function createReservation(input: CreateReservationInput) {
     }
   )
   
-  const data: LarkCreateResponse = await response.json()
-  if (data.code !== 0) throw new Error(`Create Error: ${data.msg}`)
+  const data = await response.json()
+  if (data.code !== 0) {
+    console.error('Create Reservation Error:', data)
+    throw new Error(`Create Error: ${data.msg}`)
+  }
 
   return { ...input, id: data.data.record.record_id, reservationId }
 }
@@ -214,7 +218,8 @@ export async function getReservations(filters?: { status?: string }) {
   
   let url = `https://open.larksuite.com/open-apis/bitable/v1/apps/${baseId}/tables/${tableId}/records`
   if (filters?.status) {
-    url += `?filter=CurrentValue.[Status]="${filters.status}"`
+    // フィルタリングも新しいフィールド名に合わせる
+    url += `?filter=CurrentValue.[status]="${filters.status}"`
   }
 
   const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
@@ -224,15 +229,16 @@ export async function getReservations(filters?: { status?: string }) {
 
   return data.data.items.map((item) => ({
     id: item.record_id,
-    reservationId: String(item.fields['Reservation ID'] || ''),
-    guestName: String(item.fields['Guest Name'] || ''),
-    checkInDate: typeof item.fields['Check-in Date'] === 'number' 
-      ? new Date(item.fields['Check-in Date']).toISOString().split('T')[0] 
-      : String(item.fields['Check-in Date']),
-    checkOutDate: typeof item.fields['Check-out Date'] === 'number'
-      ? new Date(item.fields['Check-out Date']).toISOString().split('T')[0]
-      : String(item.fields['Check-out Date']),
-    status: item.fields['Status'] as string,
+    reservationId: String(item.fields['reservationId'] || ''),
+    guestName: String(item.fields['guestName'] || ''),
+    // 日付フィールドが数値(タイムスタンプ)か文字列かで分岐
+    checkInDate: typeof item.fields['checkInDate'] === 'number' 
+      ? new Date(item.fields['checkInDate']).toISOString().split('T')[0] 
+      : String(item.fields['checkInDate'] || ''),
+    checkOutDate: typeof item.fields['checkOutDate'] === 'number'
+      ? new Date(item.fields['checkOutDate']).toISOString().split('T')[0]
+      : String(item.fields['checkOutDate'] || ''),
+    status: item.fields['status'] as string,
   }))
 }
 
@@ -241,8 +247,15 @@ export async function getBookedDatesInRange(start: string, end: string) {
   const bookedSet = new Set<string>()
   
   reservations.forEach((res) => {
+    // 日付が取得できていない場合はスキップ
+    if (!res.checkInDate || !res.checkOutDate) return;
+
     const s = new Date(res.checkInDate)
     const e = new Date(res.checkOutDate)
+    
+    // 日付が無効な場合もスキップ
+    if (isNaN(s.getTime()) || isNaN(e.getTime())) return;
+
     for (let d = new Date(s); d < e; d.setDate(d.getDate() + 1)) {
       bookedSet.add(d.toISOString().split('T')[0])
     }
