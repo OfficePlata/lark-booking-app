@@ -17,7 +17,7 @@ export function HeroSection() {
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-40"
         style={{
-          backgroundImage: 'url("https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=2000&q=80")',
+          backgroundImage: 'url("https://github.com/OfficePlata/lark-booking-app/blob/main/public/Stay%20Yokaban_%E8%83%8C%E6%99%AF.jpg")',
         }}
       />
       
