@@ -316,25 +316,91 @@ export async function getReservations(filters?: { status?: string }) {
 }
 
 /**
+ * オーナーが手動で設定した予約不可日を取得
+ * 
+ * 【処理の流れ】
+ * 1. Lark認証トークンを取得
+ * 2. RESERVATIONSテーブルから「予約不可日」フィールドが設定されているレコードを取得
+ * 3. 日付型フィールドの値（タイムスタンプ）をYYYY-MM-DD形式に変換
+ * 
+ * 【予約不可日フィールドについて】
+ * - フィールド名: 「予約不可日」
+ * - データ型: 日付型
+ * - Lark APIでは日付型はミリ秒タイムスタンプとして返される
+ * - オーナーがカレンダービューから手動で追加できる
+ * 
+ * @returns {Promise<string[]>} 予約不可日の配列（YYYY-MM-DD形式）
+ */
+export async function getUnavailableDates(): Promise<string[]> {
+  try {
+    const token = await getTenantAccessToken()
+    const baseId = process.env.LARK_BASE_ID
+    const tableId = process.env.LARK_RESERVATIONS_TABLE_ID
+
+    if (!tableId || !baseId) return []
+
+    // RESERVATIONSテーブルから全レコードを取得
+    const url = `https://open.larksuite.com/open-apis/bitable/v1/apps/${baseId}/tables/${tableId}/records`
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      next: { revalidate: 60 } // 60秒間キャッシュ
+    })
+
+    const data: LarkListResponse = await response.json()
+    if (data.code !== 0 || !data.data?.items) return []
+
+    const unavailableDates: string[] = []
+
+    // 各レコードの「予約不可日」フィールドを確認
+    data.data.items.forEach((item) => {
+      const rawDate = item.fields['予約不可日']
+      if (!rawDate) return
+
+      // 日付型フィールドはミリ秒タイムスタンプとして返される
+      if (typeof rawDate === 'number') {
+        const dateStr = new Date(rawDate).toISOString().split('T')[0]
+        unavailableDates.push(dateStr)
+      } else if (typeof rawDate === 'string') {
+        // 文字列の場合はそのまま使用
+        unavailableDates.push(rawDate.split('T')[0])
+      }
+    })
+
+    return unavailableDates
+  } catch (error) {
+    console.error('getUnavailableDates Error:', error)
+    return []
+  }
+}
+
+/**
  * 指定期間内の予約済み日付を取得
  * 
  * 【処理の流れ】
  * 1. 確定済み予約（status: "Confirmed"）を全て取得
- * 2. 各予約のチェックイン日からチェックアウト日までの日付を列挙
- * 3. 指定期間内の各日付について、予約済みかどうかを判定
+ * 2. オーナーが手動で設定した予約不可日を取得
+ * 3. 各予約のチェックイン日からチェックアウト日までの日付を列挙
+ * 4. 予約不可日も予約済みとして扱う
+ * 5. 指定期間内の各日付について、予約済みかどうかを判定
  * 
  * 【用途】
  * - カレンダーで予約不可日を表示するために使用
+ * - 既存予約の日付範囲 + オーナー手動設定の予約不可日 の両方を反映
  * 
  * @param {string} start - 開始日（YYYY-MM-DD形式）
  * @param {string} end - 終了日（YYYY-MM-DD形式）
  * @returns {Promise<Array>} 日付ごとの予約状況の配列
  */
 export async function getBookedDatesInRange(start: string, end: string) {
-  const reservations = await getReservations({ status: 'Confirmed' })
+  // 確定済み予約とオーナー手動設定の予約不可日を並行取得
+  const [reservations, unavailableDates] = await Promise.all([
+    getReservations({ status: 'Confirmed' }),
+    getUnavailableDates()
+  ])
+
   const bookedSet = new Set<string>()
   
-  // 各予約の宿泊期間を列挙
+  // 1. 各予約の宿泊期間を列挙
   reservations.forEach((res) => {
     // 日付が取得できていない場合はスキップ
     if (!res.checkInDate || !res.checkOutDate) return
@@ -349,6 +415,11 @@ export async function getBookedDatesInRange(start: string, end: string) {
     for (let d = new Date(s); d < e; d.setDate(d.getDate() + 1)) {
       bookedSet.add(d.toISOString().split('T')[0])
     }
+  })
+
+  // 2. オーナーが手動で設定した予約不可日を追加
+  unavailableDates.forEach((dateStr) => {
+    bookedSet.add(dateStr)
   })
 
   // 指定期間内の各日付について、予約済みかどうかを判定
