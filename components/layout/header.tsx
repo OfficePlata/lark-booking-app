@@ -30,7 +30,7 @@ export function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center">
-            <span className="text-xl font-semibold text-foreground tracking-tight">YADO</span>
+            <span className="text-xl font-semibold text-foreground tracking-tight">Stay Yokaban</span>
           </Link>
 
           {/* Desktop Navigation */}
