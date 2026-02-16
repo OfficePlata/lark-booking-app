@@ -40,7 +40,7 @@ export function Footer() {
               </li>
               <li>
                 <a 
-                  href="https://www.instagram.com/017mori?igsh=MWY4empxMzQxaWFrbg==" 
+                  href="https://www.instagram.com/017mori" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 hover:text-background transition-colors"
