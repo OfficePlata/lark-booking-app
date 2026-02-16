@@ -115,7 +115,6 @@ export function BookingForm() {
           onSelectCheckOut={handleCheckOutSelect}
           className="mb-6"
         />
-        
         {checkIn && checkOut && (
           <PricingDisplay 
             checkIn={checkIn} 
