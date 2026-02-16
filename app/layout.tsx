@@ -20,7 +20,7 @@ const geist = Geist({
 })
 
 export const metadata: Metadata = {
-  title: 'YADO | Accommodation Booking',
+  title: 'Stay Yokaban | Accommodation Booking',
   description: 'Experience true relaxation in a serene space surrounded by nature. Book your stay at our beautiful accommodation.',
   generator: 'v0.app',
   keywords: ['accommodation', 'booking', 'Japan', 'ryokan', 'vacation rental'],
