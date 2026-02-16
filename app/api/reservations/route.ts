@@ -22,7 +22,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getReservations, getBookedDatesInRange, getSpecialRates, getPaymentMasters } from '@/lib/lark'
+import { getReservations, getBookedDatesInRange, getSpecialRates, getPaymentMasters, getUnavailableDates } from '@/lib/lark'
 import { calculatePrice } from '@/lib/booking/pricing'
 import { validateBookingNights } from '@/lib/booking/restrictions'
 import { sendLarkNotification } from '@/lib/lark-webhook'
@@ -49,6 +49,18 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action')
     
+    // デバッグ: フィルタなしで全レコードを取得
+    if (action === 'debug') {
+      const allReservations = await getReservations()
+      const unavailableDates = await getUnavailableDates()
+      return NextResponse.json({ 
+        allReservations,
+        unavailableDates,
+        count: allReservations.length,
+        unavailableCount: unavailableDates.length
+      })
+    }
+
     // 予約済み日付の取得
     if (action === 'booked-dates') {
       const startDate = searchParams.get('start')
