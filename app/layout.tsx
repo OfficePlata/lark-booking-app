@@ -5,7 +5,6 @@
 import React from "react"
 import type { Metadata, Viewport } from 'next'
 import { Noto_Sans_JP, Geist } from 'next/font/google'
-import { Analytics } from '@vercel/analytics/next'
 import { I18nProvider } from '@/lib/i18n/context'
 import './globals.css'
 
@@ -62,7 +61,6 @@ export default function RootLayout({
         <I18nProvider defaultLocale="ja">
           {children}
         </I18nProvider>
-        <Analytics />
       </body>
     </html>
   )

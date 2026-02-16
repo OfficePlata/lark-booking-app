@@ -22,7 +22,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getReservations, getBookedDatesInRange, getSpecialRates } from '@/lib/lark'
+import { getReservations, getBookedDatesInRange, getSpecialRates, getPaymentMasters } from '@/lib/lark'
 import { calculatePrice } from '@/lib/booking/pricing'
 import { validateBookingNights } from '@/lib/booking/restrictions'
 import { sendLarkNotification } from '@/lib/lark-webhook'
@@ -176,6 +176,24 @@ export async function POST(request: NextRequest) {
     }
 
     // ========================================
+    // Payment Mastersから決済URLを取得
+    // ========================================
+    
+    console.log('[Reservation API] Fetching payment masters')
+    const paymentMasters = await getPaymentMasters()
+    console.log('[Reservation API] Payment masters count:', paymentMasters.length)
+    
+    // 合計金額に一致する決済URLを検索
+    const paymentMaster = paymentMasters.find(pm => pm.amount === pricing.totalAmount)
+    const paymentUrl = paymentMaster?.url || ''
+    
+    if (paymentUrl) {
+      console.log('[Reservation API] Found payment URL for amount:', pricing.totalAmount)
+    } else {
+      console.warn('[Reservation API] No payment URL found for amount:', pricing.totalAmount)
+    }
+
+    // ========================================
     // 予約IDの生成
     // ========================================
     
@@ -212,6 +230,7 @@ export async function POST(request: NextRequest) {
         totalAmount: pricing.totalAmount,
         paymentStatus,
         paymentMethod,
+        paymentUrl,
         status: 'Confirmed',
       })
       

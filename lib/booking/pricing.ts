@@ -3,8 +3,8 @@ import { SpecialRate } from "@/lib/lark"
 // 基本設定
 export const BASE_CONFIG = {
   baseGuestCount: 2,      // 基本料金に含まれる人数
-  additionalGuestRate: 4000, // 【変更】追加人数1名あたりの料金 (+4,000円)
-  maxGuests: 3,           // 【変更】最大宿泊人数 (3名)
+  additionalGuestRate: 6000, // 追加人数1名あたりの料金 (+6,000円) ※準備中のため現在は使用不可
+  maxGuests: 2,           // 最大宿泊人数 (2名) ※3名様以上は準備中
   defaultRates: {
     1: 18000, // 1泊のみの単価 (2名分)
     2: 15000, // 2連泊時の単価 (2名分)

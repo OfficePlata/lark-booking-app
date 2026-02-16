@@ -49,6 +49,7 @@ interface ReservationData {
   totalAmount: number
   paymentStatus: string
   paymentMethod: string
+  paymentUrl?: string
   status: string
 }
 
@@ -108,6 +109,7 @@ export async function sendLarkNotification(
       totalAmount: reservation.totalAmount,
       paymentStatus: reservation.paymentStatus,
       paymentMethod: reservation.paymentMethod,
+      paymentUrl: reservation.paymentUrl || '',
       status: reservation.status,
     }
 
