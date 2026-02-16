@@ -144,7 +144,6 @@ export const translations = {
     footer: {
       contact: 'お問い合わせ',
       instagram: 'Instagram',
-      address: '〒892-0843 鹿児島市千日町9-23 銀座ハイツ506号',
       copyright: '© Stay Yokaban All rights reserved.',
     },
   },
@@ -287,7 +286,6 @@ export const translations = {
     footer: {
       contact: 'Contact',
       instagram: 'Instagram',
-      address: '#506 Ginza Heights, 9-23 Sennichi-cho, Kagoshima City',
       copyright: '© Stay Yokaban All rights reserved.',
     },
   },
