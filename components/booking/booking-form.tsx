@@ -18,20 +18,19 @@ import { PricingDisplay } from './pricing-display'
 import { BookingCalendar } from './booking-calendar'
 import { SpecialRate } from '@/lib/lark'
 import { BASE_CONFIG } from '@/lib/booking/pricing'
-import { useTranslation } from '@/lib/i18n/context'
+import { useI18n } from '@/lib/i18n/context'
+
+const formSchema = z.object({
+  guestName: z.string().min(2, { message: 'お名前は2文字以上で入力してください' }),
+  email: z.string().email({ message: '有効なメールアドレスを入力してください' }),
+  numberOfGuests: z.string().refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
+    message: '人数を選択してください',
+  }),
+})
 
 export function BookingForm() {
-  const { t, language } = useTranslation() // 翻訳フックを使用
+  const { t, locale } = useI18n()
   const { toast } = useToast()
-  
-  // バリデーションスキーマをコンポーネント内で定義し、現在の言語のメッセージを適用
-  const formSchema = z.object({
-    guestName: z.string().min(2, { message: t.booking.nameMinLength }), // キー名を更新
-    email: z.string().email({ message: t.booking.emailInvalid }), // キー名を更新
-    numberOfGuests: z.string().refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
-      message: t.booking.guestsRequired, // キー名を更新
-    }),
-  })
 
   const [checkIn, setCheckIn] = useState<Date | null>(null)
   const [checkOut, setCheckOut] = useState<Date | null>(null)
@@ -55,11 +54,9 @@ export function BookingForm() {
     loadRates()
   }, [])
 
-  // 予約済み日付と予約不可日を取得し、カレンダーに反映
   useEffect(() => {
     async function loadBookedDates() {
       try {
-        // 今日から2年後までの予約済み日付を取得
         const today = new Date()
         const futureDate = new Date()
         futureDate.setFullYear(futureDate.getFullYear() + 2)
@@ -69,7 +66,6 @@ export function BookingForm() {
         const res = await fetch(`/api/reservations?action=booked-dates&start=${start}&end=${end}`)
         const data = await res.json()
         if (data.bookedDates && Array.isArray(data.bookedDates)) {
-          // isBooked: true の日付のみを抽出
           const dates = data.bookedDates
             .filter((d: { date: string; isBooked: boolean }) => d.isBooked)
             .map((d: { date: string; isBooked: boolean }) => d.date)
@@ -95,7 +91,7 @@ export function BookingForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!checkIn || !checkOut) {
-      toast({ title: t.booking.selectDatesError, variant: "destructive" }) // キー名を更新
+      toast({ title: t.booking.selectDatesError, variant: "destructive" })
       return
     }
     setIsLoading(true)
@@ -113,11 +109,11 @@ export function BookingForm() {
           paymentMethod: 'AirPAY', 
         }),
       })
-      if (!response.ok) throw new Error(t.booking.errorMessage) // キー名を更新
+      if (!response.ok) throw new Error(t.booking.errorMessage)
       setIsSuccess(true)
-      toast({ title: t.booking.successTitle, description: t.booking.successMessage }) // キー名を更新
+      toast({ title: t.booking.successTitle, description: t.booking.successMessage })
     } catch (error) {
-      toast({ title: t.booking.errorTitle, description: t.booking.errorMessage, variant: "destructive" }) // キー名を更新
+      toast({ title: t.booking.errorTitle, description: t.booking.errorMessage, variant: "destructive" })
     } finally {
       setIsLoading(false)
     }
@@ -126,9 +122,9 @@ export function BookingForm() {
   if (isSuccess) {
     return (
       <div className="text-center p-8 bg-card rounded-lg border shadow-sm">
-        <h3 className="text-2xl font-bold text-green-600 mb-4">{t.booking.requestSuccess}</h3> {/* キー名を更新 */}
-        <p className="text-muted-foreground mb-6">{t.booking.requestSuccessDesc}</p> {/* キー名を更新 */}
-        <Button onClick={() => window.location.reload()}>{t.booking.continueBooking}</Button> {/* キー名を更新 */}
+        <h3 className="text-2xl font-bold text-green-600 mb-4">{t.booking.requestSuccess}</h3>
+        <p className="text-muted-foreground mb-6">{t.booking.requestSuccessDesc}</p>
+        <Button onClick={() => window.location.reload()}>{t.booking.continueBooking}</Button>
       </div>
     )
   }
@@ -164,26 +160,26 @@ export function BookingForm() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField control={form.control} name="guestName" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t.booking.guestNameLabel}</FormLabel> {/* キー名を更新 */}
+                    <FormLabel>{t.booking.guestNameLabel}</FormLabel>
                     <FormControl>
-                      <Input placeholder={t.booking.guestNamePlaceholder} {...field} /> {/* キー名を更新 */}
+                      <Input placeholder={t.booking.guestNamePlaceholder} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
               <FormField control={form.control} name="email" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t.booking.emailLabel}</FormLabel> {/* キー名を更新 */}
+                    <FormLabel>{t.booking.emailLabel}</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder={t.booking.emailPlaceholder} {...field} /> {/* キー名を更新 */}
+                      <Input type="email" placeholder={t.booking.emailPlaceholder} {...field} />
                     </FormControl>
-                    <FormDescription>{t.booking.emailDescription}</FormDescription> {/* キー名を更新 */}
+                    <FormDescription>{t.booking.emailDescription}</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )} />
               <FormField control={form.control} name="numberOfGuests" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t.booking.guestsLabel}</FormLabel> {/* キー名を更新 */}
+                    <FormLabel>{t.booking.guestsLabel}</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger><SelectValue /></SelectTrigger>
@@ -191,8 +187,7 @@ export function BookingForm() {
                       <SelectContent>
                         {guestOptions.map(n => (
                           <SelectItem key={n} value={String(n)}>
-                            {/* 日本語なら「名」、英語なら "guest(s)" */}
-                            {n} {language === 'en' ? (n === 1 ? 'guest' : 'guests') : t.booking.guestsCount}
+                            {n}{locale === 'en' ? (n === 1 ? ' guest' : ' guests') : t.booking.guestsCount}
                           </SelectItem>
                         ))}
                       </SelectContent>
