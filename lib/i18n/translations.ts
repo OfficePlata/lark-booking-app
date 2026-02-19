@@ -13,7 +13,7 @@ export const translations = {
       rooms: 'お部屋',
       access: 'アクセス',
     },
-    // Hero: ご指定の文言を反映
+    // Hero
     hero: {
       title: '天文館で過ごす、特別な夜',
       subtitle: 'グルメや観光の中心地で、暮らすような旅を。\nお客様のためのプライベート空間です。',
@@ -67,6 +67,13 @@ export const translations = {
       nameMinLength: 'お名前は2文字以上で入力してください',
       emailInvalid: '有効なメールアドレスを入力してください',
       guestsRequired: '人数を選択してください',
+      // Pricing Display (New)
+      priceDetails: '宿泊料金の内訳',
+      accommodationFee: '宿泊料金',
+      specialRateIncluded: '特別料金適用期間が含まれています',
+      standardRate: '通常料金',
+      additionalGuestsDetails: '追加人数',
+      taxIncludedSuffix: '(税込)',
     },
     // Pricing
     pricing: {
@@ -83,7 +90,7 @@ export const translations = {
       sectionSubtitle: '天文館のマンションで、気兼ねなく過ごすプライベートステイ。',
       planName: 'スタンダードプラン',
       planDescription: '最大2名様まで・完全貸切',
-      planPrice: '¥10,000~', // ※実際の価格に合わせてください
+      planPrice: '¥18,000~',
       planUnit: '/泊',
       additionalGuestNote: '※現在、3名様プランを準備中です',
       discountNote: '※連泊でのご利用も歓迎しております',
@@ -94,6 +101,17 @@ export const translations = {
       feature5: '近隣コインパーキングをご利用ください',
       popularPlan: 'おすすめ',
       bookButton: '予約へ進む',
+      // Pricing Page (New)
+      pageTitle: '宿泊料金',
+      pageDescription: 'シンプルでわかりやすい料金体系。連泊するほどお得になります。',
+      popularBadge: '人気プラン',
+      planUnitWithGuests: '/泊 (2名様)',
+      note3Guests: '※3名様以上は +¥6,000/名（準備中）',
+      noteLongStay: '※連泊割引あり（2泊で単価¥15,000、3泊以上で¥12,000）',
+      featureEntireHouse: '一棟完全貸切',
+      featureWifiPower: 'Wi-Fi / 電源完備',
+      featureKitchenTools: 'キッチン / 調理器具利用可',
+      featureParking2: '駐車場あり (2台)',
     },
     // Calendar
     calendar: {
@@ -155,7 +173,7 @@ export const translations = {
       rooms: 'Rooms',
       access: 'Access',
     },
-    // Hero: 日本語のニュアンスに合わせて修正
+    // Hero
     hero: {
       title: 'Stay Yokaban - Your Night in Tenmonkan',
       subtitle: 'Travel like a local in the heart of the gourmet and sightseeing district. A private space just for you.',
@@ -209,6 +227,13 @@ export const translations = {
       nameMinLength: 'Name must be at least 2 characters',
       emailInvalid: 'Please enter a valid email address',
       guestsRequired: 'Please select number of guests',
+      // Pricing Display (New)
+      priceDetails: 'Price Details',
+      accommodationFee: 'Accommodation Fee',
+      specialRateIncluded: 'Includes special rate dates',
+      standardRate: 'Standard Rate',
+      additionalGuestsDetails: 'Additional Guests',
+      taxIncludedSuffix: '(Tax included)',
     },
     // Pricing
     pricing: {
@@ -225,7 +250,7 @@ export const translations = {
       sectionSubtitle: 'Your private base in downtown Kagoshima. Enjoy a local living experience.',
       planName: 'Standard Plan',
       planDescription: 'Private apartment for up to 2 guests',
-      planPrice: '¥10,000~',
+      planPrice: '¥18,000~',
       planUnit: '/night',
       additionalGuestNote: '*Plan for 3 guests is currently in preparation.',
       discountNote: '*Longer stays are welcome.',
@@ -236,6 +261,17 @@ export const translations = {
       feature5: 'Nearby Coin Parking Only',
       popularPlan: 'Recommended',
       bookButton: 'Book Now',
+      // Pricing Page (New)
+      pageTitle: 'Rates',
+      pageDescription: 'Simple and clear pricing. Stay longer, save more.',
+      popularBadge: 'Popular',
+      planUnitWithGuests: '/night (up to 2 guests)',
+      note3Guests: '*+¥6,000/person for 3+ guests (Coming Soon)',
+      noteLongStay: '*Long stay discounts available (¥15,000/night for 2 nights, ¥12,000/night for 3+ nights)',
+      featureEntireHouse: 'Entire House',
+      featureWifiPower: 'Wi-Fi / Power Outlets',
+      featureKitchenTools: 'Kitchen / Cookware',
+      featureParking2: 'Parking (2 spots)',
     },
     // Calendar
     calendar: {
