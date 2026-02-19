@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
-import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage
@@ -19,17 +18,21 @@ import { PricingDisplay } from './pricing-display'
 import { BookingCalendar } from './booking-calendar'
 import { SpecialRate } from '@/lib/lark'
 import { BASE_CONFIG } from '@/lib/booking/pricing'
-
-const formSchema = z.object({
-  guestName: z.string().min(2, { message: 'お名前は2文字以上で入力してください' }),
-  email: z.string().email({ message: '有効なメールアドレスを入力してください' }),
-  numberOfGuests: z.string().refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
-    message: '人数を選択してください',
-  }),
-})
+import { useTranslation } from '@/lib/i18n/context'
 
 export function BookingForm() {
+  const { t, language } = useTranslation() // 翻訳フックを使用
   const { toast } = useToast()
+  
+  // バリデーションスキーマをコンポーネント内で定義し、現在の言語のメッセージを適用
+  const formSchema = z.object({
+    guestName: z.string().min(2, { message: t.booking.nameMinLength }), // キー名を更新
+    email: z.string().email({ message: t.booking.emailInvalid }), // キー名を更新
+    numberOfGuests: z.string().refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
+      message: t.booking.guestsRequired, // キー名を更新
+    }),
+  })
+
   const [checkIn, setCheckIn] = useState<Date | null>(null)
   const [checkOut, setCheckOut] = useState<Date | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -92,7 +95,7 @@ export function BookingForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!checkIn || !checkOut) {
-      toast({ title: "日程を選択してください", variant: "destructive" })
+      toast({ title: t.booking.selectDatesError, variant: "destructive" }) // キー名を更新
       return
     }
     setIsLoading(true)
@@ -110,11 +113,11 @@ export function BookingForm() {
           paymentMethod: 'AirPAY', 
         }),
       })
-      if (!response.ok) throw new Error('予約作成に失敗しました')
+      if (!response.ok) throw new Error(t.booking.errorMessage) // キー名を更新
       setIsSuccess(true)
-      toast({ title: "予約リクエスト完了", description: "確認メールをお送りします。" })
+      toast({ title: t.booking.successTitle, description: t.booking.successMessage }) // キー名を更新
     } catch (error) {
-      toast({ title: "エラー", description: "処理中に問題が発生しました", variant: "destructive" })
+      toast({ title: t.booking.errorTitle, description: t.booking.errorMessage, variant: "destructive" }) // キー名を更新
     } finally {
       setIsLoading(false)
     }
@@ -123,9 +126,9 @@ export function BookingForm() {
   if (isSuccess) {
     return (
       <div className="text-center p-8 bg-card rounded-lg border shadow-sm">
-        <h3 className="text-2xl font-bold text-green-600 mb-4">予約リクエスト完了</h3>
-        <p className="text-muted-foreground mb-6">メールにて決済リンクをお送りします。</p>
-        <Button onClick={() => window.location.reload()}>続けて予約する</Button>
+        <h3 className="text-2xl font-bold text-green-600 mb-4">{t.booking.requestSuccess}</h3> {/* キー名を更新 */}
+        <p className="text-muted-foreground mb-6">{t.booking.requestSuccessDesc}</p> {/* キー名を更新 */}
+        <Button onClick={() => window.location.reload()}>{t.booking.continueBooking}</Button> {/* キー名を更新 */}
       </div>
     )
   }
@@ -135,7 +138,7 @@ export function BookingForm() {
   return (
     <div className="grid gap-8 lg:grid-cols-2">
       <div>
-        <h3 className="text-lg font-medium mb-4">1. 日程の選択</h3>
+        <h3 className="text-lg font-medium mb-4">{t.booking.step1}</h3>
         <BookingCalendar
           selectedCheckIn={checkIn}
           selectedCheckOut={checkOut}
@@ -155,23 +158,42 @@ export function BookingForm() {
       </div>
 
       <div>
-        <h3 className="text-lg font-medium mb-4">2. お客様情報</h3>
+        <h3 className="text-lg font-medium mb-4">{t.booking.step2}</h3>
         <div className="bg-card rounded-lg border p-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField control={form.control} name="guestName" render={({ field }) => (
-                  <FormItem><FormLabel>お名前</FormLabel><FormControl><Input placeholder="山田 太郎" {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem>
+                    <FormLabel>{t.booking.guestNameLabel}</FormLabel> {/* キー名を更新 */}
+                    <FormControl>
+                      <Input placeholder={t.booking.guestNamePlaceholder} {...field} /> {/* キー名を更新 */}
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )} />
               <FormField control={form.control} name="email" render={({ field }) => (
-                  <FormItem><FormLabel>メールアドレス</FormLabel><FormControl><Input type="email" placeholder="mail@example.com" {...field} /></FormControl><FormDescription>決済リンクを送付します</FormDescription><FormMessage /></FormItem>
+                  <FormItem>
+                    <FormLabel>{t.booking.emailLabel}</FormLabel> {/* キー名を更新 */}
+                    <FormControl>
+                      <Input type="email" placeholder={t.booking.emailPlaceholder} {...field} /> {/* キー名を更新 */}
+                    </FormControl>
+                    <FormDescription>{t.booking.emailDescription}</FormDescription> {/* キー名を更新 */}
+                    <FormMessage />
+                  </FormItem>
                 )} />
               <FormField control={form.control} name="numberOfGuests" render={({ field }) => (
-                  <FormItem><FormLabel>宿泊人数</FormLabel>
+                  <FormItem>
+                    <FormLabel>{t.booking.guestsLabel}</FormLabel> {/* キー名を更新 */}
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                      <FormControl>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                      </FormControl>
                       <SelectContent>
                         {guestOptions.map(n => (
-                          <SelectItem key={n} value={String(n)}>{n}名</SelectItem>
+                          <SelectItem key={n} value={String(n)}>
+                            {/* 日本語なら「名」、英語なら "guest(s)" */}
+                            {n} {language === 'en' ? (n === 1 ? 'guest' : 'guests') : t.booking.guestsCount}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -180,7 +202,7 @@ export function BookingForm() {
                 )} />
               <div className="pt-4">
                 <Button type="submit" className="w-full" size="lg" disabled={!checkIn || !checkOut || isLoading}>
-                  {isLoading ? '送信中...' : '予約リクエストを送信'}
+                  {isLoading ? t.booking.submitting : t.booking.submitButton}
                 </Button>
               </div>
             </form>
