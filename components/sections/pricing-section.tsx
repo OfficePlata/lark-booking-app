@@ -1,37 +1,50 @@
 'use client'
 
+// ========================================
+// PricingSection: トップページの料金プランカード
+// ========================================
+//
+// 【使用箇所】
+// - app/page.tsx のトップページ料金セクションで使用
+
 import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { useI18n } from '@/lib/i18n/context'
 import Link from 'next/link'
 
-const PLANS = [
-  {
-    name: '基本プラン',
-    description: '最大3名様まで',
-    price: '¥18,000~',
-    unit: '/泊 (2名様)',
-    features: [
-      '一棟完全貸切',
-      'Wi-Fi / 電源完備',
-      'キッチン / 調理器具利用可',
-      'アメニティ完備',
-    ],
-    buttonText: '予約する',
-    href: '#booking',
-    popular: true,
-  },
-]
-
 export function PricingSection() {
+  const { t } = useI18n()
+
+  // 翻訳に対応するため、コンポーネント内部で定義
+  const PLANS = [
+    {
+      name: t.pricing.planName,
+      description: t.pricing.planDescription,
+      price: t.pricing.planPrice,
+      unit: t.pricing.planUnitWithGuests,
+      features: [
+        t.pricing.featureEntireHouse,
+        t.pricing.featureWifiPower,
+        t.pricing.featureKitchenTools,
+        t.pricing.feature4,
+        t.pricing.featureParking2,
+      ],
+      buttonText: t.pricing.bookButton,
+      href: '#booking',
+      popular: true,
+      popularBadge: t.pricing.popularBadge,
+    },
+  ]
+
   return (
     <section id="pricing" className="container py-24 sm:py-32">
       <div className="mx-auto flex max-w-[58rem] flex-col items-center justify-center gap-4 text-center">
         <h2 className="text-3xl font-bold leading-[1.1] sm:text-3xl md:text-6xl">
-          宿泊料金
+          {t.pricing.pageTitle}
         </h2>
         <p className="max-w-[85%] leading-normal text-muted-foreground sm:text-lg sm:leading-7">
-          シンプルでわかりやすい料金体系。連泊するほどお得になります。
+          {t.pricing.pageDescription}
         </p>
       </div>
       
@@ -40,7 +53,7 @@ export function PricingSection() {
           <Card key={plan.name} className={plan.popular ? 'border-primary shadow-lg relative' : ''}>
             {plan.popular && (
               <div className="absolute -top-4 left-0 right-0 mx-auto w-fit rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground">
-                人気プラン
+                {plan.popularBadge}
               </div>
             )}
             <CardHeader className="text-center">
@@ -53,8 +66,8 @@ export function PricingSection() {
                 <span className="text-sm font-semibold text-muted-foreground">{plan.unit}</span>
               </div>
               <div className="mt-4 flex flex-col gap-2 text-sm text-muted-foreground">
-                <p>※3名様利用について準備中</p>
-                <p>※連泊割引あり（2泊で単価¥15,000、3泊以上で¥12,000）</p>
+                <p>{t.pricing.note3Guests}</p>
+                <p>{t.pricing.noteLongStay}</p>
               </div>
               
               <ul className="mt-8 space-y-3 text-left">

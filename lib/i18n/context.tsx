@@ -9,6 +9,7 @@ import { translations, type Locale, type TranslationKeys } from './translations'
 
 interface I18nContextType {
   locale: Locale
+  language: Locale // locale のエイリアス（booking-form.tsx 等で使用）
   t: TranslationKeys
   setLocale: (locale: Locale) => void
   toggleLocale: () => void
@@ -30,7 +31,7 @@ export function I18nProvider({ children, defaultLocale = 'ja' }: { children: Rea
   const t = translations[locale]
 
   return (
-    <I18nContext.Provider value={{ locale, t, setLocale, toggleLocale }}>
+    <I18nContext.Provider value={{ locale, language: locale, t, setLocale, toggleLocale }}>
       {children}
     </I18nContext.Provider>
   )
@@ -43,3 +44,6 @@ export function useI18n() {
   }
   return context
 }
+
+// useTranslation は useI18n のエイリアス（互換性のため）
+export const useTranslation = useI18n
