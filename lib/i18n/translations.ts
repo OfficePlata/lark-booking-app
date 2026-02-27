@@ -97,7 +97,7 @@ export const translations = {
       feature1: 'マンション一室貸切',
       feature2: 'Wi-Fi完備',
       feature3: 'キッチン利用可',
-      feature4: 'アメニティ完備',
+      feature4: '家電完備',
       feature5: '近隣コインパーキングをご利用ください',
       popularPlan: 'おすすめ',
       bookButton: '予約へ進む',
@@ -111,7 +111,6 @@ export const translations = {
       featureEntireHouse: '一棟完全貸切',
       featureWifiPower: 'Wi-Fi / 電源完備',
       featureKitchenTools: 'キッチン / 調理器具利用可',
-      featureParking2: '駐車場あり (2台)',
     },
     // Calendar
     calendar: {
@@ -271,7 +270,6 @@ export const translations = {
       featureEntireHouse: 'Entire House',
       featureWifiPower: 'Wi-Fi / Power Outlets',
       featureKitchenTools: 'Kitchen / Cookware',
-      featureParking2: 'Parking (2 spots)',
     },
     // Calendar
     calendar: {
