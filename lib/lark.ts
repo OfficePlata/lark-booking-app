@@ -49,6 +49,36 @@ interface LarkRecord {
 }
 
 // ========================================
+// 日付・タイムゾーン処理ヘルパー
+// ========================================
+/**
+ * Larkのタイムスタンプ（JSTの午前0時）をUTC変換のズレなしに YYYY-MM-DD に変換する
+ */
+function toLocalYYYYMMDD(val: number | string | Date): string {
+  if (!val) return ''
+  
+  // すでに YYYY-MM-DD 形式ならそのまま返す
+  if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
+    return val
+  }
+  // YYYY-MM-DDTHH:mm:ss... 形式ならTで分割
+  if (typeof val === 'string' && val.includes('T')) {
+    return val.split('T')[0]
+  }
+
+  const d = new Date(val)
+  if (isNaN(d.getTime())) return ''
+
+  // 強制的に日本時間(JST)でフォーマット (YYYY/MM/DD -> YYYY-MM-DD)
+  return new Intl.DateTimeFormat('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(d).replace(/\//g, '-')
+}
+
+// ========================================
 // 認証トークン管理
 // ========================================
 
@@ -161,9 +191,7 @@ export async function getSpecialRates(): Promise<SpecialRate[]> {
 
     // 日付変換ヘルパー関数
     const toDateStr = (val: unknown) => {
-      if (typeof val === 'number') return new Date(val).toISOString().split('T')[0]
-      if (typeof val === 'string') return val.split('T')[0]
-      return ''
+      return toLocalYYYYMMDD(val as any)
     }
 
     // レコードを SpecialRate 型に変換
@@ -305,12 +333,9 @@ export async function getReservations(filters?: { status?: string }) {
     reservationId: String(item.fields['reservationId'] || ''),
     guestName: String(item.fields['guestName'] || ''),
     // 日付フィールドが数値(タイムスタンプ)か文字列かで分岐
-    checkInDate: typeof item.fields['checkInDate'] === 'number' 
-      ? new Date(item.fields['checkInDate']).toISOString().split('T')[0] 
-      : String(item.fields['checkInDate'] || ''),
-    checkOutDate: typeof item.fields['checkOutDate'] === 'number'
-      ? new Date(item.fields['checkOutDate']).toISOString().split('T')[0]
-      : String(item.fields['checkOutDate'] || ''),
+// 日付フィールドが数値(タイムスタンプ)か文字列かにかかわらず安全に変換
+    checkInDate: toLocalYYYYMMDD(item.fields['checkInDate'] as any),
+    checkOutDate: toLocalYYYYMMDD(item.fields['checkOutDate'] as any),
     status: item.fields['status'] as string,
   }))
 }
@@ -357,12 +382,8 @@ export async function getUnavailableDates(): Promise<string[]> {
       if (!rawDate) return
 
       // 日付型フィールドはミリ秒タイムスタンプとして返される
-      if (typeof rawDate === 'number') {
-        const dateStr = new Date(rawDate).toISOString().split('T')[0]
-        unavailableDates.push(dateStr)
-      } else if (typeof rawDate === 'string') {
-        // 文字列の場合はそのまま使用
-        unavailableDates.push(rawDate.split('T')[0])
+      if (rawDate) {
+        unavailableDates.push(toLocalYYYYMMDD(rawDate as any))
       }
     })
 
@@ -412,7 +433,7 @@ export async function getBookedDatesInRange(start: string, end: string) {
     if (isNaN(s.getTime()) || isNaN(e.getTime())) return
 
     // チェックイン日からチェックアウト日の前日までを予約済みとする
-    for (let d = new Date(s); d < e; d.setDate(d.getDate() + 1)) {
+    for (let d = new Date(s); d < e; d.setUTCDate(d.getUTCDate() + 1)) {
       bookedSet.add(d.toISOString().split('T')[0])
     }
   })
@@ -426,7 +447,7 @@ export async function getBookedDatesInRange(start: string, end: string) {
   const dates = []
   const sDate = new Date(start)
   const eDate = new Date(end)
-  for (let d = new Date(sDate); d <= eDate; d.setDate(d.getDate() + 1)) {
+  for (let d = new Date(sDate); d <= eDate; d.setUTCDate(d.getUTCDate() + 1)) {
     const dateStr = d.toISOString().split('T')[0]
     dates.push({ 
       date: dateStr, 
