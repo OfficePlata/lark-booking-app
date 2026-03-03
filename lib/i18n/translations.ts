@@ -94,7 +94,7 @@ export const translations = {
       planUnit: '/泊',
       additionalGuestNote: '※現在、3名様プランを準備中です',
       discountNote: '※連泊でのご利用も歓迎しております',
-      feature1: 'マンション一室貸切',
+      feature1: 'マンション一室貸切・禁煙（電子タバコ含む）',
       feature2: 'Wi-Fi完備',
       feature3: 'キッチン利用可',
       feature4: '家電完備',
@@ -108,9 +108,10 @@ export const translations = {
       planUnitWithGuests: '/泊 (2名様)',
       note3Guests: '※3名様以上は +¥6,000/名（準備中）',
       noteLongStay: '※連泊割引あり（2泊で単価¥15,000、3泊以上で¥12,000）',
-      featureEntireHouse: '一室完全貸切',
+      featureEntireHouse: '一室完全貸切・禁煙（電子タバコ含む）',
       featureWifiPower: 'Wi-Fi / 電源完備',
       featureKitchenTools: 'キッチン / 調理器具利用可',
+      featureNearby: '50m圏内スーパー、コンビニ、駐車場あり',
     },
     // Calendar
     calendar: {
@@ -267,9 +268,10 @@ export const translations = {
       planUnitWithGuests: '/night (up to 2 guests)',
       note3Guests: '*+¥6,000/person for 3+ guests (Coming Soon)',
       noteLongStay: '*Long stay discounts available (¥15,000/night for 2 nights, ¥12,000/night for 3+ nights)',
-      featureEntireHouse: 'Private Apartment (Entire Unit)',
+      featureEntireHouse: 'Private Apartment (Entire Unit) / Non-smoking', // ← 禁煙を追記
       featureWifiPower: 'Wi-Fi / Power Outlets',
       featureKitchenTools: 'Kitchen / Cookware',
+      featureNearby: 'Supermarket, convenience store & parking within 50m',
     },
     // Calendar
     calendar: {
