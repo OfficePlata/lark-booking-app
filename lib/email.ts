@@ -38,7 +38,7 @@ export async function sendReservationConfirmationEmail(
       },
       body: JSON.stringify({
         to: reservation.email,
-        subject: '【YADO】予約リクエストを受け付けました / Reservation Request Received',
+        subject: '【STAY YOKABAN】予約リクエストを受け付けました / Reservation Request Received',
         html: emailContent,
       }),
     })
@@ -71,7 +71,7 @@ function generateEmailContent(reservation: ReservationEmailData): string {
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
   
   <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-    <h1 style="color: white; margin: 0; font-size: 28px;">YADO</h1>
+    <h1 style="color: white; margin: 0; font-size: 28px;">STAY YOKABAN</h1>
     <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">予約リクエストを受け付けました</p>
   </div>
   
@@ -82,7 +82,7 @@ function generateEmailContent(reservation: ReservationEmailData): string {
     </p>
     
     <p style="font-size: 14px; color: #6b7280; margin-bottom: 30px;">
-      この度は、YADOへのご予約リクエストをいただき、誠にありがとうございます。<br>
+      この度は、STAY YOKABANへのご予約リクエストをいただき、誠にありがとうございます。<br>
       以下の内容で予約リクエストを受け付けいたしました。
     </p>
     
@@ -143,7 +143,7 @@ function generateEmailContent(reservation: ReservationEmailData): string {
   
   <div style="text-align: center; padding: 20px 0;">
     <p style="font-size: 12px; color: #9ca3af; margin: 0;">
-      © ${new Date().getFullYear()} YADO. All rights reserved.
+      © ${new Date().getFullYear()} STAY YOKABAN. All rights reserved.
     </p>
   </div>
   
