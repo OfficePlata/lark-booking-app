@@ -66,40 +66,49 @@ export function BookingCalendar({
   const nextMonth = () => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))
   }
-
-  const handleDateClick = (day: number) => {
+  
+const handleDateClick = (day: number) => {
     const clickedDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
     clickedDate.setHours(0, 0, 0, 0)
 
-    // Check if date is bookable
     if (isDateInPast(clickedDate)) return
     
-    const dateStr = clickedDate.toISOString().split('T')[0]
-    if (bookedDatesSet.has(dateStr)) return
+    // toISOString() ではなく format() を使ってローカル時間での日付文字列を取得
+    const dateStr = format(clickedDate, 'yyyy-MM-dd')
 
-    // If no check-in selected, or both are selected, start fresh with check-in
+    // 未選択、または両方選択済みの状態（＝新規チェックインを選ぶ）
     if (!selectedCheckIn || (selectedCheckIn && selectedCheckOut)) {
+      if (bookedDatesSet.has(dateStr)) return // 予約済みの日はチェックイン不可
       onSelectCheckIn(clickedDate)
-      // Do not set checkOut here. handleCheckInSelect in parent component sets checkOut to null.
       return
     }
 
-    // If check-in is selected but not checkout
+    // チェックインが選択済みで、チェックアウトを選ぶ状態
     if (selectedCheckIn && !selectedCheckOut) {
       if (clickedDate <= selectedCheckIn) {
-        // Clicked before or on check-in, make it new check-in
+        // チェックインより前をクリックした場合：チェックイン日を再設定
+        if (bookedDatesSet.has(dateStr)) return
         onSelectCheckIn(clickedDate)
       } else {
-        // Check if any booked dates are in the range
-        const hasBookedInRange = Array.from(bookedDatesSet).some(bookedDate => {
-          const d = new Date(bookedDate)
-          return d > selectedCheckIn && d < clickedDate
-        })
+        // 間の日が予約済みかチェック
+        let hasBookedInRange = false
+        let currentDate = new Date(selectedCheckIn)
+        currentDate.setDate(currentDate.getDate() + 1)
+        
+        while (currentDate < clickedDate) {
+          if (bookedDatesSet.has(format(currentDate, 'yyyy-MM-dd'))) {
+            hasBookedInRange = true
+            break
+          }
+          currentDate.setDate(currentDate.getDate() + 1)
+        }
         
         if (hasBookedInRange) {
-          // Start fresh if there's a booked date in between
+          // 間に予約がある場合は、クリックした日を新しいチェックインにする
+          if (bookedDatesSet.has(dateStr)) return
           onSelectCheckIn(clickedDate)
         } else {
+          // 間に予約がなければ、チェックアウト日として確定（クリックした日自体が予約済みでもOK）
           onSelectCheckOut(clickedDate)
         }
       }
@@ -143,7 +152,31 @@ export function BookingCalendar({
 
     if (isDateInPast(date)) return true
 
-    const dateStr = date.toISOString().split('T')[0]
+    // toISOString() ではなく format() を使う
+    const dateStr = format(date, 'yyyy-MM-dd')
+
+    // チェックアウト日を選択中の場合
+    if (selectedCheckIn && !selectedCheckOut) {
+      if (date <= selectedCheckIn) {
+        // 過去に戻ってチェックインをやり直せるようにするが、予約済みの日はNG
+        return bookedDatesSet.has(dateStr)
+      }
+      
+      // 間の日が予約済みかチェック
+      let currentDate = new Date(selectedCheckIn)
+      currentDate.setDate(currentDate.getDate() + 1)
+      while (currentDate < date) {
+        if (bookedDatesSet.has(format(currentDate, 'yyyy-MM-dd'))) {
+          return true // 間に予約がある日以降は選べない
+        }
+        currentDate.setDate(currentDate.getDate() + 1)
+      }
+      
+      // 間に予約がない場合、date自体が予約済み（他の人のチェックイン日）であっても選択可能！
+      return false
+    }
+
+    // チェックイン日を選択する場合（通常時）
     return bookedDatesSet.has(dateStr)
   }
 
