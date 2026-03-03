@@ -1,4 +1,5 @@
 import { SpecialRate } from "@/lib/lark"
+import { format } from "date-fns" // ★ タイムゾーンズレ防止のために追加
 
 // 基本設定
 export const BASE_CONFIG = {
@@ -8,8 +9,25 @@ export const BASE_CONFIG = {
   defaultRates: {
     1: 18000, // 1泊のみの単価 (2名分)
     2: 15000, // 2連泊時の単価 (2名分)
-    3: 12000, // 3連泊以上の単価 (2名分)
-  }
+    3: 12000, // 3連泊時の単価 (2名分)
+    4: 12000, // 4連泊時の単価 (2名分)
+    5: 11000, // 5連泊時の単価 (2名分)
+    6: 11000, // 6連泊時の単価 (2名分)
+    7: 11000, // 7連泊時の単価 (2名分)
+    8: 10000, // 8連泊時の単価 (2名分)
+    9: 10000, // 9連泊時の単価 (2名分)
+    10: 9500, // 10連泊時の単価 (2名分)
+    11: 9500, // 11連泊時の単価 (2名分)
+    12: 9500, // 12連泊時の単価 (2名分)
+    13: 9500, // 13連泊時の単価 (2名分)
+    14: 9500, // 14連泊時の単価 (2名分)
+    15: 9500, // 15連泊時の単価 (2名分)
+    16: 9500, // 16連泊時の単価 (2名分)
+    17: 9500, // 17連泊時の単価 (2名分)
+    18: 9500, // 18連泊時の単価 (2名分)
+    19: 9500, // 19連泊時の単価 (2名分)
+    20: 9500, // 20連泊時の単価 (2名分)
+  } as Record<number, number> // 型を明示
 }
 
 export interface PricingBreakdown {
@@ -56,9 +74,9 @@ export function calculatePrice(
   if (numberOfNights <= 0) return createEmptyBreakdown(numGuests)
 
   // 3. 基本単価決定 (連泊割引)
-  let standardRate = BASE_CONFIG.defaultRates[1]
-  if (numberOfNights === 2) standardRate = BASE_CONFIG.defaultRates[2]
-  if (numberOfNights >= 3) standardRate = BASE_CONFIG.defaultRates[3]
+  // ★ 宿泊数に応じた金額を動的に取得する（20泊を超える場合は20泊の料金を適用）
+  const rateKey = Math.min(numberOfNights, 20)
+  const standardRate = BASE_CONFIG.defaultRates[rateKey] || BASE_CONFIG.defaultRates[1]
 
   // 4. 日ごとの計算 (特別料金適用)
   const dateDetails = []
@@ -66,7 +84,9 @@ export function calculatePrice(
 
   for (let i = 0; i < numberOfNights; i++) {
     const d = new Date(checkIn.getTime() + (i * oneDay))
-    const dateStr = d.toISOString().split('T')[0]
+    
+    // ★ toISOString() の罠を回避し、date-fnsでローカル時間にフォーマット
+    const dateStr = format(d, 'yyyy-MM-dd')
 
     // 特別料金を探す
     const special = specialRates?.find(r => 
