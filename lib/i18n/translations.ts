@@ -89,12 +89,12 @@ export const translations = {
       sectionTitle: '宿泊プラン',
       sectionSubtitle: '天文館のマンションで、気兼ねなく過ごすプライベートステイ。',
       planName: 'スタンダードプラン',
-      planDescription: '最大2名様まで・完全貸切',
+      planDescription: '最大3名様まで・完全貸切', 
       planPrice: '¥18,000~',
       planUnit: '/泊',
-      additionalGuestNote: '※現在、3名様プランを準備中です',
+      additionalGuestNote: '※3名様でのご利用は +¥3,000/泊（準備中）', // ★変更
       discountNote: '※連泊でのご利用も歓迎しております',
-      feature1: 'マンション一室貸切・禁煙（電子タバコ含む）',
+      feature1: '一部屋完全貸切・禁煙（電子タバコ含む）',
       feature2: 'Wi-Fi完備',
       feature3: 'キッチン利用可',
       feature4: '家電完備',
@@ -106,12 +106,13 @@ export const translations = {
       pageDescription: 'シンプルでわかりやすい料金体系。連泊するほどお得になります。',
       popularBadge: '人気プラン',
       planUnitWithGuests: '/泊 (2名様)',
-      note3Guests: '※3名様以上は +¥6,000/名（準備中）',
-      noteLongStay: '※連泊割引あり（2泊で単価¥15,000、3泊以上で¥12,000）',
-      featureEntireHouse: '一室完全貸切・禁煙（電子タバコ含む）',
+      note3Guests: '※3名様でのご利用は +¥3,000/泊（準備中）', // ★変更
+      noteLongStay: '※連泊割引あり（2泊:単価¥15,000、3〜4泊:¥12,000、5〜7泊:¥11,000、8〜9泊:¥10,000、10泊以上:¥9,500）',
+      featureEntireHouse: '一部屋完全貸切・禁煙（電子タバコ含む）',
       featureWifiPower: 'Wi-Fi / 電源完備',
       featureKitchenTools: 'キッチン / 調理器具利用可',
       featureNearby: '50m圏内スーパー、コンビニ、駐車場あり',
+      featureCheckInOut: 'チェックイン 15:00〜 / チェックアウト 11:00まで',
     },
     // Calendar
     calendar: {
@@ -249,12 +250,12 @@ export const translations = {
       sectionTitle: 'Accommodation Plans',
       sectionSubtitle: 'Your private base in downtown Kagoshima. Enjoy a local living experience.',
       planName: 'Standard Plan',
-      planDescription: 'Private apartment for up to 2 guests',
+      planDescription: 'Private apartment for up to 3 guests',
       planPrice: '¥18,000~',
       planUnit: '/night',
-      additionalGuestNote: '*Plan for 3 guests is currently in preparation.',
+      additionalGuestNote: '* +¥3,000/night for 3 guests (Coming Soon)', // ★変更
       discountNote: '*Longer stays are welcome.',
-      feature1: 'Entire Apartment',
+      feature1: 'Entire room rental / Non-smoking', 
       feature2: 'Free Wi-Fi',
       feature3: 'Kitchen Available',
       feature4: 'Amenities Included',
@@ -266,12 +267,13 @@ export const translations = {
       pageDescription: 'Simple and clear pricing. Stay longer, save more.',
       popularBadge: 'Popular',
       planUnitWithGuests: '/night (up to 2 guests)',
-      note3Guests: '*+¥6,000/person for 3+ guests (Coming Soon)',
-      noteLongStay: '*Long stay discounts available (¥15,000/night for 2 nights, ¥12,000/night for 3+ nights)',
-      featureEntireHouse: 'Private Apartment (Entire Unit) / Non-smoking', // ← 禁煙を追記
+      note3Guests: '* +¥3,000/night for 3 guests (Coming Soon)', // ★変更
+      noteLongStay: '* Long stay discounts (2 nights: ¥15,000/night, down to ¥9,500/night for 10+ nights)', 
+      featureEntireHouse: 'Entire room rental / Non-smoking', 
       featureWifiPower: 'Wi-Fi / Power Outlets',
       featureKitchenTools: 'Kitchen / Cookware',
       featureNearby: 'Supermarket, convenience store & parking within 50m',
+      featureCheckInOut: 'Check-in: from 15:00 / Check-out: until 11:00',
     },
     // Calendar
     calendar: {
