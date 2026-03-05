@@ -28,7 +28,7 @@ export function PricingSection() {
         t.pricing.featureWifiPower,
         t.pricing.featureKitchenTools,
         t.pricing.feature4,
-        t.pricing.featureParking2,
+        t.pricing.featureNearby,
       ],
       buttonText: t.pricing.bookButton,
       href: '#booking',
