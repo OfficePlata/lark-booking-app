@@ -10,57 +10,58 @@ import {
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
-  type CarouselApi, // ← APIの型を追加で読み込みます
+  type CarouselApi,
 } from "@/components/ui/carousel";
 
+// 【修正箇所1】画像のパスを public 直下の設定（/ファイル名）に直しました
 const heroImages = [
   {
     src: "/opengraph-image.jpg",
     alt: "STAY YOKABAN 外観",
   },
   {
-    src: "/images/yokaban-sign-tapestry.jpg",
+    src: "/yokaban-sign-tapestry.jpg",
     alt: "STAY YOKABAN ロゴタペストリー",
   },
   {
-    src: "/images/kitchen-overview.jpg",
+    src: "/kitchen-overview.jpg",
     alt: "広々としたキッチンとダイニング",
   },
   {
-    src: "/images/bedroom-door-view.jpg",
+    src: "/bedroom-door-view.jpg",
     alt: "くつろぎの寝室空間",
   },
 ];
 
 export function HeroSection() {
-  // カルーセルをプログラムから操作するためのAPIを準備
   const [api, setApi] = React.useState<CarouselApi>();
 
-  // 5秒ごとに次のスライドへ自動で動かす処理（外部パッケージ不要）
+  // 自動再生の処理（5秒ごと）
   React.useEffect(() => {
     if (!api) return;
 
     const intervalId = setInterval(() => {
-      api.scrollNext(); // 次のスライドへ
-    }, 5000); // 5000ミリ秒 ＝ 5秒
+      api.scrollNext();
+    }, 5000);
 
-    // 画面が切り替わった時などにタイマーをリセットする安全処理
     return () => clearInterval(intervalId);
   }, [api]);
 
   return (
-    <section className="relative w-full h-[80vh] min-h-[600px] overflow-hidden">
+    // 【修正箇所2】スマホでは高さを抑えめ(60vh)、PC(md以上)では高め(80vh)に自動可変する設定を追加
+    <section className="relative w-full h-[60vh] min-h-[400px] md:h-[80vh] md:min-h-[600px] overflow-hidden">
       <Carousel
-        setApi={setApi} // ここでAPIを連携させます
+        setApi={setApi}
         className="w-full h-full"
         opts={{
-          loop: true, // ループを有効化
+          loop: true,
         }}
       >
         <CarouselContent className="h-full">
           {heroImages.map((image, index) => (
             <CarouselItem key={index} className="h-full relative">
               <div className="absolute inset-0 w-full h-full">
+                {/* スマホでもPCでも画面いっぱいに比率を保って表示される object-cover */}
                 <Image
                   src={image.src}
                   alt={image.alt}
@@ -74,6 +75,7 @@ export function HeroSection() {
           ))}
         </CarouselContent>
         
+        {/* PC画面のときだけ表示する左右の矢印 */}
         <div className="hidden md:block">
           <CarouselPrevious className="left-8 w-12 h-12 bg-white/20 hover:bg-white/40 border-none text-white" />
           <CarouselNext className="right-8 w-12 h-12 bg-white/20 hover:bg-white/40 border-none text-white" />
@@ -81,18 +83,19 @@ export function HeroSection() {
       </Carousel>
 
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center z-10 px-4 pointer-events-none">
-        <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 tracking-tight drop-shadow-lg">
+        {/* スマホだと少し文字を小さくして見やすく調整 */}
+        <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold text-white mb-4 md:mb-6 tracking-tight drop-shadow-lg">
           STAY YOKABAN
         </h1>
-        <p className="text-lg md:text-2xl text-white/90 mb-10 max-w-2xl drop-shadow-md">
+        <p className="text-base sm:text-lg md:text-2xl text-white/90 mb-8 md:mb-10 max-w-2xl drop-shadow-md">
           暮らすように泊まる、心地よいプライベート空間
         </p>
         
-        <div className="flex gap-4 pointer-events-auto">
-          <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 text-lg px-8">
+        <div className="flex flex-col sm:flex-row gap-4 pointer-events-auto">
+          <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 text-base md:text-lg px-8 py-6">
             <Link href="#booking">予約する</Link>
           </Button>
-          <Button size="lg" variant="outline" className="bg-white/10 text-white border-white hover:bg-white/20 text-lg px-8">
+          <Button size="lg" variant="outline" className="bg-white/10 text-white border-white hover:bg-white/20 text-base md:text-lg px-8 py-6">
             <Link href="#features">施設を見る</Link>
           </Button>
         </div>
