@@ -13,6 +13,15 @@ import { cn } from '@/lib/utils'
 import { useI18n } from '@/lib/i18n/context'
 import { checkBookingRestriction, isDateInPast } from '@/lib/booking/restrictions'
 
+// ★追加: 確実に日本時間の「今日の0時0分0秒」を取得する関数
+const getTodayInJST = () => {
+  const now = new Date()
+  // JSTのオフセット（+9時間）を考慮してUTC時間からJSTの日付文字列を取得
+  const jstDateStr = new Date(now.getTime() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]
+  // その文字列から0時0分0秒のDateオブジェクトを作成
+  return new Date(`${jstDateStr}T00:00:00`)
+}
+
 interface BookingCalendarProps {
   selectedCheckIn: Date | null
   selectedCheckOut: Date | null
@@ -32,8 +41,9 @@ export function BookingCalendar({
 }: BookingCalendarProps) {
   const { locale, t } = useI18n()
   const [currentMonth, setCurrentMonth] = useState(() => {
-    const now = new Date()
-    return new Date(now.getFullYear(), now.getMonth(), 1)
+    // ★修正: カレンダーの初期表示月も日本時間を基準にする
+    const todayJst = getTodayInJST()
+    return new Date(todayJst.getFullYear(), todayJst.getMonth(), 1)
   })
 
   const bookedDatesSet = useMemo(() => new Set(bookedDates), [bookedDates])
@@ -67,11 +77,13 @@ export function BookingCalendar({
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))
   }
   
-const handleDateClick = (day: number) => {
+  const handleDateClick = (day: number) => {
     const clickedDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
     clickedDate.setHours(0, 0, 0, 0)
+    const todayJst = getTodayInJST()
 
-    if (isDateInPast(clickedDate)) return
+    // ★修正: isDateInPast に依存せず、直接日本時間の今日と比較する
+    if (clickedDate < todayJst) return
     
     // toISOString() ではなく format() を使ってローカル時間での日付文字列を取得
     const dateStr = format(clickedDate, 'yyyy-MM-dd')
@@ -149,8 +161,10 @@ const handleDateClick = (day: number) => {
   const isDateDisabled = (day: number): boolean => {
     const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
     date.setHours(0, 0, 0, 0)
+    const todayJst = getTodayInJST()
 
-    if (isDateInPast(date)) return true
+    // ★修正: 日本時間の今日より前の日付は無効化（グレーアウト）
+    if (date < todayJst) return true
 
     // toISOString() ではなく format() を使う
     const dateStr = format(date, 'yyyy-MM-dd')
