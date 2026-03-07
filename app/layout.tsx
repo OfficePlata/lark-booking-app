@@ -20,28 +20,18 @@ const geist = Geist({
 })
 
 export const metadata: Metadata = {
-  title: 'Stay Yokaban | Accommodation Booking',
-  description: 'Experience true relaxation in a serene space surrounded by nature. Book your stay at our beautiful accommodation.',
-  generator: 'v0.app',
-  keywords: ['accommodation', 'booking', 'Japan', 'ryokan', 'vacation rental'],
-  icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
-    apple: '/apple-icon.png',
+  title: "STAY YOKABAN",
+  description: "暮らすように泊まる、心地よいプライベート空間",
+  openGraph: {
+    title: "STAY YOKABAN",
+    description: "暮らすように泊まる、心地よいプライベート空間",
+    url: "[https://your-domain.com](https://your-domain.com)",
+    siteName: "STAY YOKABAN",
+    locale: "ja_JP",
+    type: "website",
+    // images: ["/opengraph-image.jpg"], // 明示的に指定する場合
   },
-}
+};
 
 export const viewport: Viewport = {
   width: 'device-width',
