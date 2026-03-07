@@ -5,6 +5,7 @@
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 import { HeroSection } from '@/components/sections/hero-section'
+import { GallerySection } from '@/components/sections/gallery-section'
 import { BookingSection } from '@/components/sections/booking-section'
 import { PricingSection } from '@/components/sections/pricing-section'
 
@@ -13,6 +14,7 @@ export default function HomePage() {
     <main className="min-h-screen">
       <Header />
       <HeroSection />
+      <GallerySection />
       <BookingSection />
       <PricingSection />
       <Footer />
