@@ -10,8 +10,8 @@ import {
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
+  type CarouselApi, // ← APIの型を追加で読み込みます
 } from "@/components/ui/carousel";
-import Autoplay from "embla-carousel-autoplay";
 
 const heroImages = [
   {
@@ -33,18 +33,28 @@ const heroImages = [
 ];
 
 export function HeroSection() {
-  // 自動再生の設定（5秒ごとに切り替わり、ユーザーが操作したら一時停止）
-  const plugin = React.useRef(
-    Autoplay({ delay: 5000, stopOnInteraction: true })
-  );
+  // カルーセルをプログラムから操作するためのAPIを準備
+  const [api, setApi] = React.useState<CarouselApi>();
+
+  // 5秒ごとに次のスライドへ自動で動かす処理（外部パッケージ不要）
+  React.useEffect(() => {
+    if (!api) return;
+
+    const intervalId = setInterval(() => {
+      api.scrollNext(); // 次のスライドへ
+    }, 5000); // 5000ミリ秒 ＝ 5秒
+
+    // 画面が切り替わった時などにタイマーをリセットする安全処理
+    return () => clearInterval(intervalId);
+  }, [api]);
 
   return (
     <section className="relative w-full h-[80vh] min-h-[600px] overflow-hidden">
       <Carousel
-        plugins={[plugin.current]}
+        setApi={setApi} // ここでAPIを連携させます
         className="w-full h-full"
         opts={{
-          loop: true,
+          loop: true, // ループを有効化
         }}
       >
         <CarouselContent className="h-full">
