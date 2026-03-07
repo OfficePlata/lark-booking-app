@@ -11,16 +11,15 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import Autoplay from "embla-carousel-autoplay"; // ※もしインストールされていれば自動再生に使えます
+import Autoplay from "embla-carousel-autoplay";
 
-// スライドショーに表示する画像のリスト
 const heroImages = [
   {
-    src: "/opengraph-image.jpg", // publicフォルダ直下にある場合
+    src: "/opengraph-image.jpg",
     alt: "STAY YOKABAN 外観",
   },
   {
-    src: "/images/yokaban-sign-tapestry.jpg", // public/images フォルダに配置した場合
+    src: "/images/yokaban-sign-tapestry.jpg",
     alt: "STAY YOKABAN ロゴタペストリー",
   },
   {
@@ -34,7 +33,7 @@ const heroImages = [
 ];
 
 export function HeroSection() {
-  // 自動再生用のプラグイン設定（数秒ごとに次のスライドへ）
+  // 自動再生の設定（5秒ごとに切り替わり、ユーザーが操作したら一時停止）
   const plugin = React.useRef(
     Autoplay({ delay: 5000, stopOnInteraction: true })
   );
@@ -45,36 +44,32 @@ export function HeroSection() {
         plugins={[plugin.current]}
         className="w-full h-full"
         opts={{
-          loop: true, // ループさせる
+          loop: true,
         }}
       >
         <CarouselContent className="h-full">
           {heroImages.map((image, index) => (
             <CarouselItem key={index} className="h-full relative">
-              {/* 背景画像 */}
               <div className="absolute inset-0 w-full h-full">
                 <Image
                   src={image.src}
                   alt={image.alt}
                   fill
-                  priority={index === 0} // 最初の画像だけ優先読み込み
+                  priority={index === 0}
                   className="object-cover"
                 />
-                {/* 文字を読みやすくするための暗いオーバーレイ */}
                 <div className="absolute inset-0 bg-black/40" />
               </div>
             </CarouselItem>
           ))}
         </CarouselContent>
         
-        {/* 左右の矢印ナビゲーション（PC画面などで表示） */}
         <div className="hidden md:block">
           <CarouselPrevious className="left-8 w-12 h-12 bg-white/20 hover:bg-white/40 border-none text-white" />
           <CarouselNext className="right-8 w-12 h-12 bg-white/20 hover:bg-white/40 border-none text-white" />
         </div>
       </Carousel>
 
-      {/* 前面に固定で表示するテキストとボタン */}
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center z-10 px-4 pointer-events-none">
         <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 tracking-tight drop-shadow-lg">
           STAY YOKABAN
