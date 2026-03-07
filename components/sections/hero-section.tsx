@@ -1,19 +1,13 @@
 "use client";
 
 import * as React from "react";
+// Next.jsの標準コンポーネントを使用
 import Image from "next/image";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-  type CarouselApi,
-} from "@/components/ui/carousel";
+// エラーログに基づき、正しいフック名である useTranslation を使用
+import { useTranslation } from "@/lib/i18n/context";
 
-// 画像リスト
+// 1. 画像リスト（opengraph-image.jpg を先頭に配置）
 const heroImages = [
   { src: "/opengraph-image.jpg", altKey: "alt1" },
   { src: "/yokaban-sign-tapestry.jpg", altKey: "alt2" },
@@ -21,7 +15,7 @@ const heroImages = [
   { src: "/bedroom-door-view.jpg", altKey: "alt4" },
 ] as const;
 
-// 日本語と英語のテキストデータ
+// 2. 翻訳データ
 const translations = {
   ja: {
     subtitle: "暮らすように泊まる、心地よいプライベート空間",
@@ -44,86 +38,123 @@ const translations = {
 };
 
 export function HeroSection() {
-  const [api, setApi] = React.useState<CarouselApi>();
-  const [lang, setLang] = React.useState<"ja" | "en">("ja");
-
-  // クライアントサイドでのみ言語設定を読み込む（ハイドレーションエラー防止）
+  // エラーログに従い、useTranslation を使用
+  const { language } = useTranslation();
+  const [currentLang, setCurrentLang] = React.useState<"ja" | "en">("ja");
+  
+  // マウント時に言語設定を同期（ハイドレーションエラー対策）
   React.useEffect(() => {
-    // 例: HTMLのlang属性から取得する
-    const htmlLang = document.documentElement.lang;
-    if (htmlLang && htmlLang.startsWith('en')) {
-      setLang('en');
+    if (language === "en") {
+      setCurrentLang("en");
+    } else {
+      setCurrentLang("ja");
     }
+  }, [language]);
+
+  const t = translations[currentLang];
+  const [currentIndex, setCurrentIndex] = React.useState(0);
+
+  // 5秒ごとの自動スライド
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % heroImages.length);
+    }, 5000);
+    return () => clearInterval(interval);
   }, []);
 
-  const t = translations[lang];
-
-  // 自動再生の処理（5秒ごと）
-  React.useEffect(() => {
-    if (!api) return;
-
-    const intervalId = setInterval(() => {
-      api.scrollNext();
-    }, 5000);
-
-    return () => clearInterval(intervalId);
-  }, [api]);
+  const nextSlide = () => setCurrentIndex((prev) => (prev + 1) % heroImages.length);
+  const prevSlide = () => setCurrentIndex((prev) => (prev - 1 + heroImages.length) % heroImages.length);
 
   return (
-    // スマホでは高さを抑えめ(60vh)、PC(md以上)では高め(80vh)に自動可変する設定
-    <section className="relative w-full h-[60vh] min-h-[400px] md:h-[80vh] md:min-h-[600px] overflow-hidden">
-      <Carousel
-        setApi={setApi}
-        className="w-full h-full"
-        opts={{
-          loop: true,
-        }}
-      >
-        <CarouselContent className="h-full">
-          {heroImages.map((image, index) => (
-            <CarouselItem key={index} className="h-full relative">
-              <div className="absolute inset-0 w-full h-full">
-                {/* スマホでもPCでも画面いっぱいに比率を保って表示される object-cover */}
-                <Image
-                  src={image.src}
-                  alt={t[image.altKey]}
-                  fill
-                  priority={index === 0}
-                  className="object-cover"
-                />
-                <div className="absolute inset-0 bg-black/40" />
-              </div>
-            </CarouselItem>
-          ))}
-        </CarouselContent>
-        
-        {/* PC画面のときだけ表示する左右の矢印 */}
-        <div className="hidden md:block">
-          <CarouselPrevious className="left-8 w-12 h-12 bg-white/20 hover:bg-white/40 border-none text-white" />
-          <CarouselNext className="right-8 w-12 h-12 bg-white/20 hover:bg-white/40 border-none text-white" />
+    <section className="relative w-full h-[65vh] min-h-[480px] md:h-[85vh] md:min-h-[600px] overflow-hidden bg-zinc-950">
+      
+      {/* 背景スライド */}
+      {heroImages.map((image, index) => (
+        <div 
+          key={index}
+          className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+            index === currentIndex ? "opacity-100 z-0" : "opacity-0 -z-10"
+          }`}
+        >
+          <Image
+            src={image.src}
+            alt={t[image.altKey as keyof typeof t] || "STAY YOKABAN"}
+            fill
+            priority={index === 0}
+            className="object-cover"
+            sizes="100vw"
+          />
+          {/* 視認性向上のためのオーバーレイグラデーション */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/60" />
         </div>
-      </Carousel>
+      ))}
 
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-center z-10 px-4 pointer-events-none">
-        {/* スマホだと少し文字を小さくして見やすく調整 */}
-        <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold text-white mb-4 md:mb-6 tracking-tight drop-shadow-lg">
+      {/* ナビゲーション（矢印） */}
+      <div className="absolute inset-0 z-10 pointer-events-none flex items-center justify-between px-4 md:px-8">
+        <button 
+          onClick={prevSlide}
+          className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-black/20 hover:bg-black/40 text-white backdrop-blur-sm transition-all pointer-events-auto border border-white/10"
+          aria-label="Previous slide"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5 md:w-6 md:h-6">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+          </svg>
+        </button>
+        <button 
+          onClick={nextSlide}
+          className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-black/20 hover:bg-black/40 text-white backdrop-blur-sm transition-all pointer-events-auto border border-white/10"
+          aria-label="Next slide"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5 md:w-6 md:h-6">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+          </svg>
+        </button>
+      </div>
+
+      {/* コンテンツエリア */}
+      <div className="absolute inset-0 z-20 flex flex-col items-center justify-center text-center px-6 pointer-events-none">
+        {/* タイトル：強力な影と間隔を調整 */}
+        <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight drop-shadow-[0_4px_12px_rgba(0,0,0,0.9)]">
           STAY YOKABAN
         </h1>
-        {/* 言語に合わせてサブタイトルを変更 */}
-        <p className="text-base sm:text-lg md:text-2xl text-white/90 mb-8 md:mb-10 max-w-2xl drop-shadow-md">
+        
+        {/* サブタイトル：読みやすさを追求したウェイトと影 */}
+        <p className="text-base sm:text-lg md:text-2xl text-zinc-100 mb-10 md:mb-14 max-w-2xl font-medium drop-shadow-[0_2px_8px_rgba(0,0,0,1)] leading-relaxed">
           {t.subtitle}
         </p>
         
-        <div className="flex flex-col sm:flex-row gap-4 pointer-events-auto">
-          {/* 言語に合わせてボタンのテキストを変更 */}
-          <Button asChild size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 text-base md:text-lg px-8 py-6">
-            <Link href="#booking">{t.bookNow}</Link>
-          </Button>
-          <Button asChild size="lg" variant="outline" className="bg-white/10 text-white border-white hover:bg-white/20 text-base md:text-lg px-8 py-6">
-            <Link href="#features">{t.viewFeatures}</Link>
-          </Button>
+        {/* アクションボタン */}
+        <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto pointer-events-auto">
+          <Link 
+            href="#booking"
+            className="flex items-center justify-center bg-zinc-100 text-zinc-950 hover:bg-white text-base md:text-lg font-bold px-10 py-4 rounded-full transition-all shadow-[0_4px_20px_rgba(0,0,0,0.5)] transform hover:scale-105 active:scale-95"
+          >
+            {t.bookNow}
+          </Link>
+          
+          <Link 
+            href="#features"
+            className="flex items-center justify-center bg-transparent text-white border-2 border-white/80 hover:bg-white/10 text-base md:text-lg font-semibold px-10 py-4 rounded-full backdrop-blur-md transition-all shadow-[0_4px_15px_rgba(0,0,0,0.3)] transform hover:scale-105 active:scale-95"
+          >
+            {t.viewFeatures}
+          </Link>
         </div>
       </div>
+
+      {/* インジケーター */}
+      <div className="absolute bottom-8 left-0 right-0 z-20 flex justify-center gap-3">
+        {heroImages.map((_, idx) => (
+          <button
+            key={idx}
+            onClick={() => setCurrentIndex(idx)}
+            className={`transition-all duration-500 rounded-full ${
+              idx === currentIndex ? "bg-white w-10 h-1.5" : "bg-white/40 w-1.5 h-1.5 hover:bg-white/60"
+            }`}
+            aria-label={`Go to slide ${idx + 1}`}
+          />
+        ))}
+      </div>
+
     </section>
   );
 }
