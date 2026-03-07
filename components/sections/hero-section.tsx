@@ -1,7 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { Button } from "../ui/button";
+import Image from "next/image";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import {
   Carousel,
   CarouselContent,
@@ -9,8 +11,8 @@ import {
   CarouselNext,
   CarouselPrevious,
   type CarouselApi,
-} from "../ui/carousel";
-import { useLanguage } from "../../lib/i18n/context"; // 言語設定を読み込む
+} from "@/components/ui/carousel";
+import { useLanguage } from "@/lib/i18n/context";
 
 // 画像リスト（altテキストはキーで管理します）
 const heroImages = [
@@ -86,10 +88,13 @@ export function HeroSection() {
           {heroImages.map((image, index) => (
             <CarouselItem key={index}>
               <div className="relative w-full h-[60vh] min-h-[450px] md:h-[80vh] md:min-h-[600px]">
-                <img
+                <Image
                   src={image.src}
-                  alt={t[image.altKey]} // 言語に合わせてaltテキストも変更
-                  className="absolute inset-0 w-full h-full object-cover"
+                  alt={t[image.altKey as keyof typeof t] || "STAY YOKABAN image"}
+                  fill
+                  priority={index === 0}
+                  className="object-cover"
+                  sizes="100vw"
                 />
                 <div className="absolute inset-0 bg-black/40" />
               </div>
@@ -115,10 +120,10 @@ export function HeroSection() {
         <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto px-6 sm:px-0 pointer-events-auto">
           {/* 言語に合わせてボタンのテキストを変更 */}
           <Button asChild size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 text-base md:text-lg w-full sm:w-48 py-6 shadow-lg">
-            <a href="#booking">{t.bookNow}</a>
+            <Link href="#booking">{t.bookNow}</Link>
           </Button>
           <Button asChild size="lg" variant="outline" className="bg-white/10 text-white border-white hover:bg-white/30 text-base md:text-lg w-full sm:w-48 py-6 backdrop-blur-md shadow-lg">
-            <a href="#features">{t.viewFeatures}</a>
+            <Link href="#features">{t.viewFeatures}</Link>
           </Button>
         </div>
       </div>
