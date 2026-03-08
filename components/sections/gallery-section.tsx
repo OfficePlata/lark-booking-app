@@ -36,6 +36,8 @@ const galleryData = {
   other: [
     { src: "/hallway-art-gallery.jpg", altJa: "廊下のアート", altEn: "Hallway Art" },
     { src: "/hallway-kitchen-view.jpg", altJa: "廊下からの眺め", altEn: "Hallway View" },
+    { src: "/dining-table-setting.jpg", altJa: "お部屋に配置されたダイニングテーブルのセッティング", altEn: "Dining table setting in the room" },
+    { src: "/dining-table-close-up.jpg", altJa: "テーブル上の食器とカトラリー", altEn: "Tableware and cutlery on the dining table" },
   ]
 } as const;
 
