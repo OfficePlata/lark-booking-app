@@ -70,7 +70,20 @@ export function PricingSection() {
                 <p>{t.pricing.noteLongStay}</p>
               </div>
               
-              <ul className="mt-8 space-y-3 text-left">
+              {/* こだわりベッドのPRカード */}
+              <div className="mt-8 rounded-lg border border-amber-200 bg-amber-50 p-4 text-left">
+                <p className="flex items-center gap-2 font-semibold text-amber-900">
+                  🛏️ 上質な睡眠をお約束する、こだわりのベッド
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-amber-800">
+                  寝具には、通気性と体圧分散に優れた3層構造の高級マットレス「Nスリープ ラグジュアリー」を採用。長時間の移動や観光の疲れを、心地よい眠りでしっかりと癒やします。
+                </p>
+                <p className="mt-1 text-xs text-amber-700">
+                  ※清潔な制菌・防臭・防ダニ加工
+                </p>
+              </div>
+
+              <ul className="mt-6 space-y-3 text-left">
                 {plan.features.map((feature) => (
                   <li key={feature} className="flex items-center gap-2">
                     <Check className="h-4 w-4 text-primary" />
