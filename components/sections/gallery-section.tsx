@@ -23,6 +23,8 @@ const galleryData = {
     { src: "/desk-workspace.jpg", altJa: "ワークスペース", altEn: "Workspace" },
     { src: "/closet-hangers.jpg", altJa: "クローゼット", altEn: "Closet" },
     { src: "/tv-wifi-router.jpg", altJa: "TV・Wi-Fi", altEn: "TV & Wi-Fi" },
+    { src: "/shoehorn.jpg", altJa: "長柄くつべら", altEn: "Long Shoehorn" },
+    { src: "/earplug.jpg", altJa: "耳栓・充電ケーブル・リモコン", altEn: "Earplugs, Charging Cable & Remote" },
   ],
   bath: [
     { src: "/bathroom-bathtub.jpg", altJa: "バスルーム", altEn: "Bathroom" },
