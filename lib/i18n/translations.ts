@@ -163,6 +163,7 @@ export const translations = {
     footer: {
       contact: 'お問い合わせ',
       instagram: 'Instagram',
+      address: 'アクセス',
       copyright: '© Stay Yokaban All rights reserved.',
     },
   },
@@ -324,6 +325,7 @@ export const translations = {
     footer: {
       contact: 'Contact',
       instagram: 'Instagram',
+      address: 'Access',
       copyright: '© Stay Yokaban All rights reserved.',
     },
   },
