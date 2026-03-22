@@ -331,4 +331,7 @@ export const translations = {
   },
 } as const
 
-export type TranslationKeys = typeof translations.ja
+type DeepString<T> = {
+  [K in keyof T]: T[K] extends string ? string : DeepString<T[K]>
+}
+export type TranslationKeys = DeepString<typeof translations.ja>
