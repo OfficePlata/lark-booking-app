@@ -1,8 +1,6 @@
 "use client";
 
 import * as React from "react";
-// プレビュー環境でのエラーを回避するため、標準のHTML要素を使用します
-// 本番環境（Vercel）でもこのまま動作し、ビルドエラーも発生しません
 import { useTranslation } from "@/lib/i18n/context";
 
 // 1. ギャラリーデータの定義
@@ -65,18 +63,68 @@ const translations = {
 
 type Category = keyof typeof galleryData;
 
+interface LightboxImage {
+  src: string;
+  alt: string;
+}
+
+function Lightbox({ image, onClose }: { image: LightboxImage; onClose: () => void }) {
+  // ESCキーで閉じる
+  React.useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKey);
+    // スクロール禁止
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", handleKey);
+      document.body.style.overflow = "";
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+      onClick={onClose}
+    >
+      {/* 閉じるボタン */}
+      <button
+        className="absolute top-4 right-4 text-white text-4xl leading-none hover:opacity-70 transition-opacity"
+        onClick={onClose}
+        aria-label="閉じる"
+      >
+        ×
+      </button>
+
+      {/* 画像（クリックが背景に伝播しないよう stopPropagation） */}
+      <img
+        src={image.src}
+        alt={image.alt}
+        className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      />
+
+      {/* キャプション */}
+      <p className="absolute bottom-6 left-0 right-0 text-center text-white text-sm opacity-80">
+        {image.alt}
+      </p>
+    </div>
+  );
+}
+
 export function GallerySection() {
-  // エラーログに基づき useTranslation を使用
   const { language } = useTranslation();
   const [activeTab, setActiveTab] = React.useState<Category>("kitchen");
-  
+  const [lightbox, setLightbox] = React.useState<LightboxImage | null>(null);
+
   const currentLang = (language === "en" ? "en" : "ja") as keyof typeof translations;
   const t = translations[currentLang];
 
   return (
     <section id="features" className="py-20 bg-zinc-50 min-h-[600px]">
       <div className="container mx-auto px-4">
-        
+
         {/* セクション見出し */}
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-5xl font-bold text-zinc-900 mb-6 tracking-tight">
@@ -88,7 +136,7 @@ export function GallerySection() {
           </p>
         </div>
 
-        {/* カスタムタブ（依存関係エラーを避けるために自作） */}
+        {/* カスタムタブ */}
         <div className="flex flex-wrap justify-center gap-3 mb-12">
           {(Object.keys(galleryData) as Array<Category>).map((cat) => (
             <button
@@ -107,40 +155,47 @@ export function GallerySection() {
 
         {/* ギャラリーグリッド */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8 transition-all duration-500">
-          {galleryData[activeTab].map((image, index) => (
-            <div 
-              key={`${activeTab}-${index}`} 
-              className="group relative aspect-square overflow-hidden rounded-2xl bg-zinc-200 shadow-sm transition-all duration-500 hover:shadow-xl hover:-translate-y-1 animate-in fade-in zoom-in duration-300"
-            >
-              <img
-                src={image.src}
-                alt={currentLang === "en" ? image.altEn : image.altJa}
-                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
-                loading="lazy"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = `https://placehold.co/400x400/f4f4f5/71717a?text=${activeTab}`;
-                }}
-              />
-              
-              {/* ホバー時に情報を表示 */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-end p-5">
-                <p className="text-white text-sm font-bold tracking-wide transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
-                  {currentLang === "en" ? image.altEn : image.altJa}
-                </p>
+          {galleryData[activeTab].map((image, index) => {
+            const alt = currentLang === "en" ? image.altEn : image.altJa;
+            return (
+              <div
+                key={`${activeTab}-${index}`}
+                className="group relative aspect-square overflow-hidden rounded-2xl bg-zinc-200 shadow-sm transition-all duration-500 hover:shadow-xl hover:-translate-y-1 animate-in fade-in zoom-in duration-300 cursor-pointer"
+                onClick={() => setLightbox({ src: image.src, alt })}
+              >
+                <img
+                  src={image.src}
+                  alt={alt}
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
+                  loading="lazy"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = `https://placehold.co/400x400/f4f4f5/71717a?text=${activeTab}`;
+                  }}
+                />
+
+                {/* ホバー時に情報を表示 */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-end p-5">
+                  <p className="text-white text-sm font-bold tracking-wide transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+                    {alt}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* 補足メッセージ */}
         <div className="mt-20 p-8 border border-zinc-200 rounded-3xl bg-white shadow-sm text-center max-w-4xl mx-auto">
           <p className="text-zinc-500 text-sm italic">
-            {currentLang === "en" 
-              ? "Actual equipment and layout may vary slightly." 
+            {currentLang === "en"
+              ? "Actual equipment and layout may vary slightly."
               : "※実際の設備や配置は写真と若干異なる場合がございます。"}
           </p>
         </div>
       </div>
+
+      {/* ライトボックス */}
+      {lightbox && <Lightbox image={lightbox} onClose={() => setLightbox(null)} />}
     </section>
   );
 }
