@@ -24,22 +24,21 @@ const BASE_URL = 'https://stay-yokaban.33l.jp'
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
   title: {
-    default: 'STAY YOKABAN｜鹿児島・天文館の民泊',
+    default: 'STAY YOKABAN｜鹿児島の民泊・宿泊施設',
     template: '%s | STAY YOKABAN',
   },
-  description: '鹿児島市天文館エリアにある民泊「STAY YOKABAN」。暮らすように泊まる、心地よいプライベート空間。チェックイン15:00〜・チェックアウト11:00。',
+  description: '鹿児島の民泊「STAY YOKABAN（ステイヨカバン）」。鹿児島らしいくつろぎの宿泊体験をご提供します。',
   keywords: [
-    '鹿児島 民泊', '鹿児島 貸切部屋', '天文館 宿泊', '天文館 民泊',
-    '鹿児島市 宿泊', 'STAY YOKABAN', 'ステイヨカバン',
-    '鹿児島 ホテル', '鹿児島 旅行', '鹿児島 観光', 'Kagoshima Minpaku',
+    '鹿児島 民泊', 'STAY YOKABAN', 'ステイヨカバン',
+    '鹿児島 宿泊', '鹿児島 ゲストハウス',
   ],
   alternates: {
-    canonical: BASE_URL,
+    canonical: `${BASE_URL}/`,
   },
   openGraph: {
-    title: 'STAY YOKABAN｜鹿児島・天文館の民泊',
-    description: '鹿児島市天文館エリアにある民泊。暮らすように泊まる、心地よいプライベート空間。',
-    url: BASE_URL,
+    title: 'STAY YOKABAN｜鹿児島の民泊',
+    description: '鹿児島の民泊施設 STAY YOKABAN。鹿児島らしいくつろぎの宿泊体験をご提供します。',
+    url: `${BASE_URL}/`,
     siteName: 'STAY YOKABAN',
     locale: 'ja_JP',
     type: 'website',
@@ -48,14 +47,14 @@ export const metadata: Metadata = {
         url: '/opengraph-image.jpg',
         width: 1200,
         height: 630,
-        alt: 'STAY YOKABAN 鹿児島・天文館の民泊',
+        alt: 'STAY YOKABAN 鹿児島の民泊',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'STAY YOKABAN｜鹿児島・天文館の民泊',
-    description: '鹿児島市天文館エリアにある一棟貸し民泊。暮らすように泊まる、心地よいプライベート空間。',
+    title: 'STAY YOKABAN｜鹿児島の民泊',
+    description: '鹿児島の民泊施設 STAY YOKABAN。鹿児島らしいくつろぎの宿泊体験をご提供します。',
     images: ['/opengraph-image.jpg'],
   },
   robots: {

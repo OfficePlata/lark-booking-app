@@ -10,33 +10,13 @@ const jsonLd = {
   '@type': 'LodgingBusiness',
   name: 'STAY YOKABAN',
   alternateName: 'ステイヨカバン',
-  description: '鹿児島市天文館エリアにある民泊。暮らすように泊まる、心地よいプライベート空間。',
-  url: 'https://stay-yokaban.33l.jp',
-  image: 'https://stay-yokaban.33l.jp/opengraph-image.jpg',
-  telephone: '',
-  email: 'zundare.hogane017@gmail.com',
+  description: '鹿児島の民泊施設 STAY YOKABAN',
+  url: 'https://stay-yokaban.33l.jp/',
   address: {
     '@type': 'PostalAddress',
-    streetAddress: '千日町9-23銀座ハイツ506号',
-    addressLocality: '鹿児島市',
     addressRegion: '鹿児島県',
-    postalCode: '892-0843',
     addressCountry: 'JP',
   },
-  geo: {
-    '@type': 'GeoCoordinates',
-    latitude: 31.5897,
-    longitude: 130.5571,
-  },
-  priceRange: '¥16,000〜',
-  checkinTime: '15:00',
-  checkoutTime: '11:00',
-  amenityFeature: [
-    { '@type': 'LocationFeatureSpecification', name: 'WiFi', value: true },
-    { '@type': 'LocationFeatureSpecification', name: 'キッチン', value: true },
-    { '@type': 'LocationFeatureSpecification', name: '洗濯機', value: true },
-  ],
-  sameAs: ['https://www.instagram.com/017mori'],
 }
 
 export default function HomePage() {
