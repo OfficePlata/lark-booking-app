@@ -4,8 +4,8 @@ import { format } from "date-fns" // ★ タイムゾーンズレ防止のため
 // 基本設定
 export const BASE_CONFIG = {
   baseGuestCount: 2,      // 基本料金に含まれる人数
-  additionalGuestRate: 6000, // 追加人数1名あたりの料金 (+6,000円) ※準備中のため現在は使用不可
-  maxGuests: 2,           // 最大宿泊人数 (2名) ※3名様以上は準備中
+  additionalGuestRate: 3000, // 追加人数1名あたりの料金 (+3,000円/泊)
+  maxGuests: 3,           // 最大宿泊人数 (3名)
   defaultRates: {
     1: 16000, // 1泊のみの単価 (2名分)
     2: 13000, // 2連泊時の単価 (2名分)
