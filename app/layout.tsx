@@ -23,6 +23,9 @@ const BASE_URL = 'https://stay-yokaban.33l.jp'
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
+  verification: {
+    google: 'KF3rkDn65jGPgGfOCLimZL7UR1urzZo8g8WCrFBGVLA',
+  },
   title: {
     default: 'STAY YOKABAN｜鹿児島の民泊・宿泊施設',
     template: '%s | STAY YOKABAN',
