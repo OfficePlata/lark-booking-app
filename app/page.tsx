@@ -10,7 +10,7 @@ const jsonLd = {
   '@type': 'LodgingBusiness',
   name: 'STAY YOKABAN',
   alternateName: 'ステイヨカバン',
-  description: '鹿児島市天文館エリアにある一棟貸し民泊。暮らすように泊まる、心地よいプライベート空間。',
+  description: '鹿児島市天文館エリアにある民泊。暮らすように泊まる、心地よいプライベート空間。',
   url: 'https://stay-yokaban.33l.jp',
   image: 'https://stay-yokaban.33l.jp/opengraph-image.jpg',
   telephone: '',
